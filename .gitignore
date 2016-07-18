@@ -4,3 +4,4 @@ build
 clt13
 libacirc
 libaesrand
+src/*.o
