@@ -9,16 +9,17 @@
 
 void secret_params_init (
     secret_params *p,
-    obf_params *op,
+    acirc *c,
     size_t lambda,
-    aes_randstate_t rng
+    aes_randstate_t rng,
+    int fake
 ) {
-    p->op = op;
-    p->toplevel = obf_index_create_toplevel(op);
+    p->fake = fake;
+    p->toplevel = obf_index_create_toplevel(c);
 
-    size_t kappa = op->delta + 2 * op->c->ninputs;
+    size_t kappa = acirc_delta(c) + 2*c->ninputs;
 
-    if (op->fake) {
+    if (p->fake) {
         mpz_t *moduli = zim_malloc(2 * sizeof(mpz_t));
         for (int i = 0; i < 2; i++) {
             mpz_init(moduli[i]);
@@ -39,11 +40,8 @@ void secret_params_clear (secret_params *p)
 {
     obf_index_destroy(p->toplevel);
 
-    if (p->op->fake) {
-        for (int i = 0; i < 2; i++) {
-            mpz_clear(p->moduli[i]);
-        }
-        free(p->moduli);
+    if (p->fake) {
+        mpz_vect_destroy(p->moduli, 2);
     }
 
     else {
@@ -54,19 +52,19 @@ void secret_params_clear (secret_params *p)
 
 void public_params_init (public_params *p, secret_params *s)
 {
-    p->op = s->op;
+    p->fake = s->fake;
     p->toplevel = s->toplevel;
-    if (p->op->fake){
+    p->my_toplevel = 0;
+    p->my_moduli = 0;
+
+    if (p->fake){
         p->moduli = s->moduli;
+        p->my_clt_pp = 0;
     } else {
         p->clt_pp = zim_malloc(sizeof(clt_pp));
         clt_pp_init(p->clt_pp, s->clt_st);
+        p->my_clt_pp = 1;
     }
-
-    p->my_op = 0;
-    p->my_toplevel = 0;
-    p->my_moduli = 0;
-    p->my_clt_pp = 1;
 }
 
 void public_params_clear (public_params *p)
@@ -88,7 +86,7 @@ void public_params_clear (public_params *p)
 
 mpz_t* get_moduli (secret_params *s)
 {
-    if (s->op->fake) {
+    if (s->fake) {
         return s->moduli;
     } else {
         return s->clt_st->gs;
@@ -98,11 +96,11 @@ mpz_t* get_moduli (secret_params *s)
 ////////////////////////////////////////////////////////////////////////////////
 // encodings
 
-void encoding_init (encoding *x, obf_params *p)
+void encoding_init (encoding *x, int fake, int n)
 {
     x->index = zim_malloc(sizeof(obf_index));
-    obf_index_init(x->index, p);
-    x->fake = p->fake;
+    obf_index_init(x->index, n);
+    x->fake = fake;
     if (x->fake) {
         x->slots = zim_malloc(NSLOTS * sizeof(mpz_t));
         for (int i = 0; i < NSLOTS; i++) {
@@ -149,7 +147,7 @@ void encode (
 ){
     assert(nins == NSLOTS);
     obf_index_set(x->index, ix);
-    if (p->op->fake) {
+    if (p->fake) {
         for (int i = 0; i < nins; i++) {
             mpz_set(x->slots[i], inps[i]);
         }
@@ -161,7 +159,7 @@ void encode (
 void encoding_mul (encoding *rop, encoding *x, encoding *y, public_params *p)
 {
     obf_index_add(rop->index, x->index, y->index);
-    if (p->op->fake) {
+    if (p->fake) {
         for (int i = 0; i < NSLOTS; i++) {
             mpz_mul(rop->slots[i], x->slots[i], y->slots[i]);
             mpz_mod(rop->slots[i], rop->slots[i], p->moduli[i]);
@@ -176,7 +174,7 @@ void encoding_add (encoding *rop, encoding *x, encoding *y, public_params *p)
 {
     assert(obf_index_eq(x->index, y->index));
     obf_index_set(rop->index, x->index);
-    if (p->op->fake) {
+    if (p->fake) {
         for (int i = 0; i < NSLOTS; i++) {
             mpz_add(rop->slots[i], x->slots[i], y->slots[i]);
             mpz_mod(rop->slots[i], rop->slots[i], p->moduli[i]);
@@ -190,7 +188,7 @@ void encoding_sub(encoding *rop, encoding *x, encoding *y, public_params *p)
 {
     assert(obf_index_eq(x->index, y->index));
     obf_index_set(rop->index, x->index);
-    if (p->op->fake) {
+    if (p->fake) {
         for (int i = 0; i < NSLOTS; i++) {
             mpz_sub(rop->slots[i], x->slots[i], y->slots[i]);
             mpz_mod(rop->slots[i], rop->slots[i], p->moduli[i]);
@@ -225,7 +223,7 @@ int encoding_is_zero (encoding *x, public_params *p)
         obf_index_print(p->toplevel);
         assert(obf_index_eq(x->index, p->toplevel));
     }
-    if (p->op->fake) {
+    if (p->fake) {
         ret = true;
         for (int i = 0; i < NSLOTS; i++)
             ret &= mpz_sgn(x->slots[i]) == 0;
@@ -238,16 +236,16 @@ int encoding_is_zero (encoding *x, public_params *p)
 ////////////////////////////////////////////////////////////////////////////////
 // serialization
 
-void public_params_read (public_params *pp, FILE *const fp, obf_params *op)
+void public_params_read (public_params *pp, FILE *const fp)
 {
-    pp->op = op;
-
+    int_read(&pp->fake, fp);
+    GET_NEWLINE(fp);
     pp->toplevel = zim_malloc(sizeof(obf_index));
     obf_index_read(pp->toplevel, fp);
     pp->my_toplevel = 1;
     GET_NEWLINE(fp);
 
-    if (op->fake) {
+    if (pp->fake) {
         pp->moduli = zim_malloc(NSLOTS * sizeof(mpz_t));
         for (int i = 0; i < NSLOTS; i++) {
             mpz_init(pp->moduli[i]);
@@ -268,10 +266,12 @@ void public_params_read (public_params *pp, FILE *const fp, obf_params *op)
 
 void public_params_write (FILE *const fp, public_params *pp)
 {
+    int_write(fp, pp->fake);
+    PUT_NEWLINE(fp);
     obf_index_write(fp, pp->toplevel);
     PUT_NEWLINE(fp);
 
-    if (pp->op->fake) {
+    if (pp->fake) {
         clt_vector_fsave(fp, pp->moduli, NSLOTS);
     }
 

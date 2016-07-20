@@ -1,5 +1,5 @@
 #include "mmap.h"
-#include "obf_params.h"
+#include "obfuscator.h"
 
 #include <aesrand.h>
 #include <stdio.h>
@@ -17,10 +17,10 @@ void usage()
 int main (int argc, char **argv)
 {
     int fake = 0;
-    int c;
     ul lambda = 10;
-    while ((c = getopt (argc, argv, "fl:")) != -1) {
-        switch (c) {
+    int arg;
+    while ((arg = getopt(argc, argv, "fl:")) != -1) {
+        switch (arg) {
             case 'f':
                 fake = 1;
                 break;
@@ -49,25 +49,25 @@ int main (int argc, char **argv)
     ////////////////////////////////////////////////////////////////////////////////
     // all right, lets get to it!
 
-    obf_params op;
-    obf_params_init(&op, acirc_filename, fake);
+    acirc *c = acirc_from_file(acirc_filename);
+    size_t delta = acirc_delta(c);
 
     printf("circuit: ninputs=%lu nconsts=%lu ngates=%lu nrefs=%lu delta=%lu\n",
-           op.c->ninputs, op.c->nconsts, op.c->ngates, op.c->nrefs, op.delta);
+           c->ninputs, c->nconsts, c->ngates, c->nrefs, delta);
 
     printf("obfuscation: fake=%d lambda=%lu kappa=%lu\n",
-           fake, lambda, op.delta + 2 * op.c->ninputs);
+           fake, lambda, delta + 2*c->ninputs);
 
     aes_randstate_t rng;
     aes_randinit(rng);
 
     secret_params sp;
-    secret_params_init(&sp, &op, lambda, rng);
+    secret_params_init(&sp, c, lambda, rng, fake);
 
+    obfuscation *obf = obfuscate(c, rng);
 
-
-
+    acirc_clear(c); free(c);
     aes_randclear(rng);
-    obf_params_clear(&op);
     secret_params_clear(&sp);
+    obfuscation_destroy(obf);
 }

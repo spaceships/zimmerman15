@@ -2,9 +2,9 @@
 
 #include <assert.h>
 
-void obf_index_init (obf_index *ix, obf_params *op)
+void obf_index_init (obf_index *ix, size_t n)
 {
-    ix->n = op->c->ninputs;
+    ix->n = n;
     ix->nzs = 4 * ix->n + 1;
     ix->pows = zim_calloc(ix->nzs, sizeof(ul));
 }
@@ -70,13 +70,13 @@ void obf_index_write (FILE *fp, obf_index *ix)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-obf_index* obf_index_create_toplevel (obf_params *p)
+obf_index* obf_index_create_toplevel (acirc *c)
 {
     obf_index *ix = zim_malloc(sizeof(obf_index));
-    obf_index_init(ix, p);
-    IX_Y(ix) = acirc_max_const_degree(p->c);
+    obf_index_init(ix, c->ninputs);
+    IX_Y(ix) = acirc_max_const_degree(c);
     for (size_t i = 0; i < ix->n; i++) {
-        size_t d = acirc_max_var_degree(p->c, i);
+        size_t d = acirc_max_var_degree(c, i);
         IX_X(ix, i, 0) = d;
         IX_X(ix, i, 1) = d;
         IX_Z(ix, i) = 1;
