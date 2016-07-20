@@ -9,47 +9,10 @@
 #include <stdio.h>
 #include <err.h>
 
-int g_verbose;
-
-// XXX: The use of /dev/urandom is not secure; however, the supercomputer we run
-// on doesn't appear to have enough entropy, and blocks for long periods of
-// time.  Thus, we use /dev/urandom instead.
-#ifndef RANDFILE
-#  define RANDFILE "/dev/urandom"
-#endif
-
 double current_time(void) {
     struct timeval t;
     (void) gettimeofday(&t, NULL);
     return (double) (t.tv_sec + (double) (t.tv_usec / 1000000.0));
-}
-
-int seed_rng(gmp_randstate_t *rng) {
-    int file;
-    if ((file = open(RANDFILE, O_RDONLY)) == -1) {
-        (void) fprintf(stderr, "Error opening %s\n", RANDFILE);
-        return 1;
-    } else {
-        unsigned long seed;
-        if (read(file, &seed, sizeof seed) == -1) {
-            (void) fprintf(stderr, "Error reading from %s\n", RANDFILE);
-            (void) close(file);
-            return 1;
-        } else {
-            gmp_randinit_default(*rng);
-            gmp_randseed_ui(*rng, seed);
-        }
-    }
-    if (file != -1)
-        (void) close(file);
-    return 0;
-}
-
-int max(int x, int y) {
-    if (x >= y)
-        return x;
-    else
-        return y;
 }
 
 void array_printstring(int *xs, size_t n)
@@ -94,53 +57,6 @@ void array_print_ui (size_t *xs, size_t len) {
             printf("%lu,", xs[i]);
         }
     }
-}
-
-size_t array_sum_ui (size_t *xs, size_t n)
-{
-    size_t res = 0;
-    for (int i = 0; i < n; i++) {
-        res += xs[i];
-    }
-    return res;
-}
-
-bool in_array(int x, int *ys, size_t len) {
-    for (int i = 0; i < len; i++) {
-        if (x == ys[i])
-            return true;
-    }
-    return false;
-}
-
-bool any_in_array(int *xs, int xlen, int *ys, size_t ylen) {
-    for (int i = 0; i < xlen; i++) {
-        if (in_array(xs[i], ys, ylen))
-            return true;
-    }
-    return false;
-}
-
-bool array_eq(int *xs, int *ys, size_t len)
-{
-    for (int i = 0; i < len; i++)
-        if (xs[i] != ys[i])
-            return false;
-    return true;
-}
-
-bool array_eq_ui(size_t *xs, size_t *ys, size_t len)
-{
-    for (int i = 0; i < len; i++)
-        if (xs[i] != ys[i])
-            return false;
-    return true;
-}
-
-void array_add_ui (ul *rop, ul *xs, ul *ys, size_t len)
-{
-    for (size_t i = 0; i < len; i++)
-        rop[i] = xs[i] + ys[i];
 }
 
 void mpz_random_inv(mpz_t rop, gmp_randstate_t rng, mpz_t modulus) {
@@ -267,13 +183,18 @@ void* zim_realloc(void *ptr, size_t size)
 ////////////////////////////////////////////////////////////////////////////////
 // serialization
 
-void ulong_read (unsigned long *x, FILE *const fp)
-{
+void ulong_read (unsigned long *x, FILE *const fp) {
     assert(fscanf(fp, "%lu", x) > 0);
 }
 
-void ulong_write (FILE *const fp, unsigned long x)
-{
+void ulong_write (FILE *const fp, unsigned long x) {
     assert(fprintf(fp, "%lu", x) > 0);
 }
 
+void int_write (FILE *const fp, int x) {
+    assert(fprintf(fp, "%d", x) > 0);
+}
+
+void int_read (int *x, FILE *const fp) {
+    assert(fscanf(fp, "%d", x) > 0);
+}

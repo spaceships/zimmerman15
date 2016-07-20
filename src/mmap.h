@@ -7,50 +7,41 @@
 #include <clt13.h>
 #include <stdlib.h>
 
-#define FAKE_MMAP 0
+#define NSLOTS 2
 
 typedef struct {
     obf_params *op;
     obf_index *toplevel;
-    #if FAKE_MMAP
-    mpz_t *moduli;
-    #else
     clt_state *clt_st;
-    #endif
+    mpz_t *moduli;          // fake moduli
 } secret_params;
 
 typedef struct {
     obf_params *op;
     obf_index *toplevel;
-    #if FAKE_MMAP
-    mpz_t *moduli;
-    #else
     clt_pp *clt_pp;
-    #endif
+
+    int my_op;
+    int my_toplevel;
+    int my_clt_pp;
+
+    mpz_t *moduli;          // fake moduli
+    int my_moduli;
 } public_params;
 
 typedef struct {
     obf_index *index;
-    size_t nslots;
-    #if FAKE_MMAP
-    mpz_t *slots;
-    #else
     clt_elem_t clt;
-    #endif
+    mpz_t *slots;           // fake slots
+    int fake;
 } encoding;
 
-void secret_params_init (
-    secret_params *p,
-    obf_params *op,
-    obf_index *toplevel,
-    size_t lambda,
-    aes_randstate_t rng
-);
-
+void secret_params_init (secret_params *sp, obf_params *op, size_t lambda, aes_randstate_t rng);
 void secret_params_clear (secret_params *pp);
+
 mpz_t* get_moduli (secret_params *s);
 
-void public_params_init (public_params *p, secret_params *s);
+void public_params_init  (public_params *p, secret_params *s);
 void public_params_clear (public_params *pp);
 
 void encoding_init  (encoding *x, obf_params *p);
@@ -73,10 +64,8 @@ int  encoding_eq  (encoding *x, encoding *y);
 
 int encoding_is_zero (encoding *x, public_params *p);
 
-void secret_params_read  (secret_params *x, FILE *const fp);
-void secret_params_write (FILE *const fp, secret_params *x);
-void public_params_read  (public_params *x, FILE *const fp);
-void public_params_write (FILE *const fp, public_params *x);
+void public_params_read  (public_params *pp, FILE *const fp, obf_params *op);
+void public_params_write (FILE *const fp, public_params *pp);
 void encoding_read  (encoding *x, FILE *const fp);
 void encoding_write (FILE *const fp, encoding *x);
 

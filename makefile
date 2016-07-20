@@ -26,10 +26,10 @@ deepclean: clean
 	$(RM) -r clt13
 	$(RM) -r libacirc
 	$(RM) -r build
-	$(RM) vgcore.*
 
 clean:
 	$(RM) src/*.o
 	$(RM) -r circuits/*.acirc.*
 	$(RM) $(OBJS)
 	$(RM) obfuscate evaluate
+	$(RM) vgcore.*
