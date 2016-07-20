@@ -41,26 +41,8 @@ bool obf_index_eq (const obf_index *x, const obf_index *y)
 
 void obf_index_print (obf_index *ix)
 {
-    if (IX_Y(ix))
-        printf("Y^%lu ", IX_Y(ix));
-
-    for (size_t i = 0; i < ix->n; i++) {
-        if (IX_X(ix, i, 0))
-            printf("X_{%lu,0}^%lu ", i, IX_X(ix, i, 0));
-
-        if (IX_X(ix, i, 1))
-            printf("X_{%lu,1}^%lu ", i, IX_X(ix, i, 1));
-    }
-
-    for (size_t i = 0; i < ix->n; i++) {
-        if (IX_Z(ix, i))
-            printf("Z_%lu ", IX_Z(ix, i));
-    }
-
-    for (size_t i = 0; i < ix->n; i++) {
-        if (IX_W(ix, i))
-            printf("W_%lu ", IX_W(ix, i));
-    }
+    array_print_ui(ix->pows, ix->nzs);
+    puts("");
 }
 
 void obf_index_read (obf_index *ix, FILE *fp)

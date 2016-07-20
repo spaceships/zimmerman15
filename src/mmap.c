@@ -17,7 +17,6 @@ void secret_params_init (
     p->toplevel = obf_index_create_toplevel(op);
 
     size_t kappa = op->delta + 2 * op->c->ninputs;
-    printf("kappa=%lu\n", kappa);
 
     if (op->fake) {
         mpz_t *moduli = zim_malloc(2 * sizeof(mpz_t));
