@@ -2,6 +2,7 @@
 #include "obfuscator.h"
 
 #include <aesrand.h>
+#include <assert.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -11,6 +12,7 @@ void usage()
     printf("Options:\n");
     printf("\t-l\tScurity parameter (default=10).\n");
     printf("\t-f\tUse fake multilinear map for testing.\n");
+    printf("\t-o\tSpecify obfuscation output file.\n");
     puts("");
 }
 
@@ -18,18 +20,23 @@ int main (int argc, char **argv)
 {
     int fake = 0;
     ul lambda = 10;
+    int output_filename_set = 0;
+    char output_filename [1024];
     int arg;
-    while ((arg = getopt(argc, argv, "fl:")) != -1) {
-        switch (arg) {
-            case 'f':
-                fake = 1;
-                break;
-            case 'l':
-                lambda = atol(optarg);
-                break;
-            default:
-                usage();
-                return 0;
+    while ((arg = getopt(argc, argv, "fl:o:")) != -1) {
+        if (arg == 'f') {
+            fake = 1;
+        }
+        else if (arg == 'l') {
+            lambda = atol(optarg);
+        }
+        else if (arg == 'o') {
+            strcpy(output_filename, optarg);
+            output_filename_set = 1;
+        }
+        else {
+            usage();
+            exit(EXIT_FAILURE);
         }
     }
 
@@ -63,11 +70,14 @@ int main (int argc, char **argv)
 
     secret_params *sp = secret_params_create(c, lambda, rng, fake);
     obfuscation  *obf = obfuscate(c, sp, rng);
-    public_params *pp = public_params_create(sp);
 
-    acirc_clear(c); free(c);
+    if (!output_filename_set)
+        sprintf(output_filename, "%s.%lu.zim", acirc_filename, lambda);
+    FILE *obf_fp = fopen(output_filename, "w");
+    obfuscation_write(obf_fp, obf);
+
+    acirc_destroy(c);
     aes_randclear(rng);
     secret_params_destroy(sp);
-    public_params_destroy(pp);
     obfuscation_destroy(obf);
 }

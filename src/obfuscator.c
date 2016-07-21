@@ -1,11 +1,16 @@
 #include "obfuscator.h"
 
+#include <assert.h>
+
 obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
 {
     obfuscation *obf = zim_malloc(sizeof(obfuscation));
+
     int n = obf->ninputs  = c->ninputs;
     int m = obf->nconsts  = c->nconsts;
     int o = obf->noutputs = c->noutputs;
+
+    obf->pp = public_params_create(sp);
 
     mpz_t zero, one;
     mpz_inits(zero, one, NULL);
@@ -117,6 +122,7 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
 
 void obfuscation_destroy (obfuscation *obf)
 {
+    public_params_destroy(obf->pp);
     for (size_t i = 0; i < obf->ninputs; i++) {
         for (size_t b = 0; b <= 1; b++) {
             encoding_destroy(obf->xhat[i][b]);
@@ -146,5 +152,108 @@ void obfuscation_destroy (obfuscation *obf)
     free(obf);
 }
 
-void obfuscation_write (FILE *fp, obfuscation *obf);
-void obfuscation_read  (obfuscation *obf, FILE *fp);
+void obfuscation_write (FILE *fp, obfuscation *obf)
+{
+    ulong_write(fp, obf->ninputs);
+    PUT_SPACE(fp);
+    ulong_write(fp, obf->nconsts);
+    PUT_SPACE(fp);
+    ulong_write(fp, obf->noutputs);
+    PUT_NEWLINE(fp);
+    public_params_write(fp, obf->pp);
+    PUT_NEWLINE(fp);
+    for (size_t i = 0; i < obf->ninputs; i++) {
+        for (size_t b = 0; b <= 1; b++) {
+            encoding_write(fp, obf->xhat[i][b]);
+            PUT_NEWLINE(fp);
+            encoding_write(fp, obf->uhat[i][b]);
+            PUT_NEWLINE(fp);
+            encoding_write(fp, obf->zhat[i][b]);
+            PUT_NEWLINE(fp);
+            encoding_write(fp, obf->what[i][b]);
+            PUT_NEWLINE(fp);
+        }
+    }
+    for (size_t j = 0; j < obf->nconsts; j++) {
+        encoding_write(fp, obf->yhat[j]);
+        PUT_NEWLINE(fp);
+    }
+    encoding_write(fp, obf->vhat);
+    PUT_NEWLINE(fp);
+    for (size_t k = 0; k < obf->noutputs; k++) {
+        encoding_write(fp, obf->Chatstar[k]);
+        if (k < obf->noutputs - 1)
+            PUT_NEWLINE(fp);
+    }
+}
+
+obfuscation* obfuscation_read (FILE *const fp)
+{
+    obfuscation *obf = zim_malloc(sizeof(obfuscation));
+    ulong_read(&obf->ninputs, fp);
+    GET_SPACE(fp);
+    ulong_read(&obf->nconsts, fp);
+    GET_SPACE(fp);
+    ulong_read(&obf->noutputs, fp);
+    GET_NEWLINE(fp);
+    obf->pp = public_params_read(fp);
+    GET_NEWLINE(fp);
+    obf->xhat = zim_malloc(obf->ninputs * sizeof(encoding**));
+    obf->uhat = zim_malloc(obf->ninputs * sizeof(encoding**));
+    obf->zhat = zim_malloc(obf->ninputs * sizeof(encoding**));
+    obf->what = zim_malloc(obf->ninputs * sizeof(encoding**));
+    for (size_t i = 0; i < obf->ninputs; i++) {
+        obf->xhat[i] = zim_malloc(2 * sizeof(encoding*));
+        obf->uhat[i] = zim_malloc(2 * sizeof(encoding*));
+        obf->zhat[i] = zim_malloc(2 * sizeof(encoding*));
+        obf->what[i] = zim_malloc(2 * sizeof(encoding*));
+        for (size_t b = 0; b <= 1; b++) {
+            obf->xhat[i][b] = encoding_read(fp);
+            GET_NEWLINE(fp);
+            obf->uhat[i][b] = encoding_read(fp);
+            GET_NEWLINE(fp);
+            obf->zhat[i][b] = encoding_read(fp);
+            GET_NEWLINE(fp);
+            obf->what[i][b] = encoding_read(fp);
+            GET_NEWLINE(fp);
+        }
+    }
+    obf->yhat = zim_malloc(obf->nconsts * sizeof(encoding*));
+    for (size_t j = 0; j < obf->nconsts; j++) {
+        obf->yhat[j] = encoding_read(fp);
+        GET_NEWLINE(fp);
+    }
+    obf->vhat = encoding_read(fp);
+    GET_NEWLINE(fp);
+    obf->Chatstar = zim_malloc(obf->noutputs * sizeof(encoding*));
+    for (size_t k = 0; k < obf->noutputs; k++) {
+        obf->Chatstar[k] = encoding_read(fp);
+        if (k < obf->noutputs - 1)
+            GET_NEWLINE(fp);
+    }
+    return obf;
+}
+
+int obf_eq (obfuscation *obf1, obfuscation *obf2)
+{
+    assert(obf1->ninputs == obf2->ninputs);
+    assert(obf1->nconsts == obf2->nconsts);
+    assert(obf1->noutputs == obf2->noutputs);
+    assert(public_params_eq(obf1->pp, obf2->pp));
+    for (size_t i = 0; i < obf1->ninputs; i++) {
+        for (size_t b = 0; b <= 1; b++) {
+            assert(encoding_eq(obf1->xhat[i][b], obf2->xhat[i][b]));
+            assert(encoding_eq(obf1->uhat[i][b], obf2->uhat[i][b]));
+            assert(encoding_eq(obf1->zhat[i][b], obf2->zhat[i][b]));
+            assert(encoding_eq(obf1->what[i][b], obf2->what[i][b]));
+        }
+    }
+    for (size_t j = 0; j < obf1->nconsts; j++) {
+        assert(encoding_eq(obf1->yhat[j], obf2->yhat[j]));
+    }
+    assert(encoding_eq(obf1->vhat, obf2->vhat));
+    for (size_t k = 0; k < obf1->noutputs; k++) {
+        assert(encoding_eq(obf1->Chatstar[k], obf2->Chatstar[k]));
+    }
+    return 1;
+}

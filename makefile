@@ -29,7 +29,7 @@ deepclean: clean
 
 clean:
 	$(RM) src/*.o
-	$(RM) -r circuits/*.acirc.*
+	$(RM) -r circuits/*.acirc.*.zim
 	$(RM) $(OBJS)
 	$(RM) obfuscate evaluate
 	$(RM) vgcore.*

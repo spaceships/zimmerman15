@@ -238,8 +238,9 @@ int encoding_is_zero (encoding *x, public_params *p)
 ////////////////////////////////////////////////////////////////////////////////
 // serialization
 
-void public_params_read (public_params *pp, FILE *const fp)
+public_params* public_params_read (FILE *fp)
 {
+    public_params *pp = zim_malloc(sizeof(public_params));
     int_read(&pp->fake, fp);
     GET_NEWLINE(fp);
     pp->toplevel = zim_malloc(sizeof(obf_index));
@@ -263,8 +264,32 @@ void public_params_read (public_params *pp, FILE *const fp)
         pp->my_moduli = 0;
         pp->my_clt_pp = 1;
     }
+    return pp;
 }
 
+// typedef struct {
+//     obf_index *toplevel;
+//     clt_pp *clt_pp;
+//     mpz_t *moduli;          // fake moduli
+//     int fake;
+//     int my_toplevel;
+//     int my_clt_pp;
+//     int my_moduli;
+// } public_params;
+
+int public_params_eq (public_params *pp1, public_params *pp2)
+{
+    assert(obf_index_eq(pp1->toplevel, pp2->toplevel));
+    assert(pp1->fake == pp2->fake);
+    if (pp1->fake) {
+        assert(mpz_vect_eq(pp1->moduli, pp2->moduli, NSLOTS));
+    } else {
+        assert(mpz_eq(pp1->clt_pp->x0,  pp2->clt_pp->x0));
+        assert(mpz_eq(pp1->clt_pp->pzt, pp2->clt_pp->pzt));
+        assert(pp1->clt_pp->nu == pp1->clt_pp->nu);
+    }
+    return 1;
+}
 
 void public_params_write (FILE *const fp, public_params *pp)
 {
@@ -282,8 +307,10 @@ void public_params_write (FILE *const fp, public_params *pp)
     }
 }
 
-void encoding_read (encoding *x, FILE *const fp)
+encoding* encoding_read (FILE *fp)
 {
+    encoding *x = zim_malloc(sizeof(encoding));
+
     int_read(&(x->fake), fp);
     GET_SPACE(fp);
 
@@ -303,9 +330,11 @@ void encoding_read (encoding *x, FILE *const fp)
         mpz_init(x->clt);
         clt_elem_fread(fp, x->clt);
     }
+
+    return x;
 }
 
-void encoding_write (FILE *const fp, encoding *x)
+void encoding_write (FILE *fp, encoding *x)
 {
     int_write(fp, x->fake);
     PUT_SPACE(fp);

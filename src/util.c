@@ -142,6 +142,20 @@ void mpz_vect_mod (mpz_t *rop, mpz_t *xs, mpz_t *moduli, size_t n)
     }
 }
 
+int mpz_eq (mpz_t x, mpz_t y)
+{
+    return mpz_cmp(x, y) == 0;
+}
+
+int mpz_vect_eq (mpz_t *xs, mpz_t *ys, size_t n)
+{
+    for (size_t i = 0; i < n; i++) {
+        if (!mpz_eq(xs[i], ys[i]))
+            return 0;
+    }
+    return 1;
+}
+
 size_t bit(size_t x, size_t i)
 {
     return (x & (1 << i)) > 0;

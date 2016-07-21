@@ -27,6 +27,9 @@ void mpz_vect_mul (mpz_t *rop, mpz_t *xs, mpz_t *ys, size_t n);
 void mpz_vect_mod (mpz_t *rop, mpz_t *xs, mpz_t *moduli, size_t n);
 void mpz_vect_set (mpz_t *rop, mpz_t *xs, size_t n);
 
+int mpz_eq (mpz_t x, mpz_t y);
+int mpz_vect_eq (mpz_t *xs, mpz_t *ys, size_t n);
+
 void mpz_vect_repeat_ui (mpz_t *vec, size_t x, size_t n);
 
 size_t bit (size_t x, size_t i);

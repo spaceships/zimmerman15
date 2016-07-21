@@ -11,6 +11,7 @@ typedef struct {
     size_t ninputs;
     size_t nconsts;
     size_t noutputs;
+    public_params *pp;
     encoding ***xhat;     // i \in [ninputs], b \in {0,1}
     encoding ***uhat;
     encoding ***zhat;
@@ -23,7 +24,10 @@ typedef struct {
 obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng);
 
 void obfuscation_destroy (obfuscation *obf);
-void obfuscation_write   (FILE *fp, obfuscation *obf);
-void obfuscation_read    (obfuscation *obf, FILE *fp);
+
+void obfuscation_write (FILE *fp, obfuscation *obf);
+obfuscation* obfuscation_read (FILE *fp);
+
+int obf_eq (obfuscation *obf1, obfuscation *obf2); // for checking the serialization
 
 #endif
