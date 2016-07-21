@@ -59,11 +59,11 @@ void array_print_ui (size_t *xs, size_t len) {
     }
 }
 
-void mpz_random_inv(mpz_t rop, gmp_randstate_t rng, mpz_t modulus) {
+void mpz_randomm_inv_aes (mpz_t rop, aes_randstate_t rng, mpz_t modulus) {
     mpz_t inv;
     mpz_init(inv);
     do {
-        mpz_urandomm(rop, rng, modulus);
+        mpz_urandomm_aes(rop, rng, modulus);
     } while (mpz_invert(inv, rop, modulus) == 0);
     mpz_clear(inv);
 }

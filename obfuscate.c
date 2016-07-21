@@ -61,13 +61,13 @@ int main (int argc, char **argv)
     aes_randstate_t rng;
     aes_randinit(rng);
 
-    secret_params sp;
-    secret_params_init(&sp, c, lambda, rng, fake);
-
-    obfuscation *obf = obfuscate(c, rng);
+    secret_params *sp = secret_params_create(c, lambda, rng, fake);
+    obfuscation  *obf = obfuscate(c, sp, rng);
+    public_params *pp = public_params_create(sp);
 
     acirc_clear(c); free(c);
     aes_randclear(rng);
-    secret_params_clear(&sp);
+    secret_params_destroy(sp);
+    public_params_destroy(pp);
     obfuscation_destroy(obf);
 }

@@ -15,7 +15,7 @@ void array_print_ui        (size_t*, size_t);
 void array_printstring     (int *bits, size_t n);
 void array_printstring_rev (int *bits, size_t n);
 
-void mpz_random_inv(mpz_t rop, gmp_randstate_t rng, mpz_t modulus);
+void mpz_randomm_inv_aes (mpz_t rop, aes_randstate_t rng, mpz_t modulus);
 
 mpz_t* mpz_vect_create     (size_t n);
 void mpz_vect_print        (mpz_t*, size_t);

@@ -36,26 +36,18 @@ typedef struct {
     mpz_t *slots;           // fake slots
 } encoding;
 
-void secret_params_init (secret_params *sp, acirc *c, size_t lambda, aes_randstate_t rng, int fake);
-void secret_params_clear (secret_params *pp);
+secret_params* secret_params_create (acirc *c, size_t lambda, aes_randstate_t rng, int fake);
+void secret_params_destroy (secret_params *pp);
 
 mpz_t* get_moduli (secret_params *s);
 
-void public_params_init  (public_params *p, secret_params *s);
+public_params* public_params_create (secret_params *s);
 void public_params_clear (public_params *pp);
+void public_params_destroy (public_params *pp);
 
-void encoding_init  (encoding *x, int fake, int n);
-void encoding_clear (encoding *x);
-void encoding_set   (encoding *rop, encoding *x);
-
-void encode (
-    encoding *x,
-    mpz_t *inps,
-    size_t nins,
-    const obf_index *ix,
-    secret_params *p,
-    aes_randstate_t rng
-);
+encoding* encode (mpz_t inp0, mpz_t inp2, const obf_index *ix, secret_params *sp, aes_randstate_t rng);
+void encoding_set (encoding *rop, encoding *x);
+void encoding_destroy (encoding *x);
 
 void encoding_mul (encoding *rop, encoding *x, encoding *y, public_params *p);
 void encoding_add (encoding *rop, encoding *x, encoding *y, public_params *p);
