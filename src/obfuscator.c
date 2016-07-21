@@ -20,21 +20,28 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
     mpz_t alpha [n];
     mpz_t gamma [n][2];
     mpz_t delta [n][2];
+    for (size_t i = 0; i < n; i++) {
+        mpz_inits(alpha[i], gamma[i][0], gamma[i][1], delta[i][0], delta[i][1], NULL);
+        mpz_randomm_inv_aes(alpha[i],    rng, get_moduli(sp)[1]);
+        for (size_t b = 0; b <= 1; b++) {
+            mpz_randomm_inv_aes(gamma[i][b], rng, get_moduli(sp)[1]);
+            mpz_randomm_inv_aes(delta[i][b], rng, get_moduli(sp)[0]);
+        }
+    }
+
+    mpz_t beta [m];
+    for (size_t j = 0; j < m; j++) {
+        mpz_init(beta[j]);
+        mpz_randomm_inv_aes(beta[j], rng, get_moduli(sp)[1]);
+    }
 
     obf->xhat = zim_malloc(n * sizeof(mpz_t*));
     obf->uhat = zim_malloc(n * sizeof(mpz_t*));
     obf->zhat = zim_malloc(n * sizeof(mpz_t*));
     obf->what = zim_malloc(n * sizeof(mpz_t*));
 
+    #pragma omp parallel for
     for (size_t i = 0; i < n; i++) {
-        mpz_inits(alpha[i], gamma[i][0], gamma[i][1], delta[i][0], delta[i][1], NULL);
-
-        mpz_randomm_inv_aes(alpha[i],    rng, get_moduli(sp)[1]);
-        mpz_randomm_inv_aes(gamma[i][0], rng, get_moduli(sp)[1]);
-        mpz_randomm_inv_aes(gamma[i][1], rng, get_moduli(sp)[1]);
-        mpz_randomm_inv_aes(delta[i][0], rng, get_moduli(sp)[0]);
-        mpz_randomm_inv_aes(delta[i][1], rng, get_moduli(sp)[0]);
-
         obf->xhat[i] = zim_malloc(2 * sizeof(encoding*));
         obf->uhat[i] = zim_malloc(2 * sizeof(encoding*));
         obf->zhat[i] = zim_malloc(2 * sizeof(encoding*));
@@ -71,15 +78,12 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
     }
 
     // create the yhat and vhat encodings
-    mpz_t beta [m];
     mpz_t y;
     mpz_init(y);
     obf_index *ix_y = obf_index_create_y(n);
     obf->yhat = zim_malloc(m * sizeof(encoding*));
+    #pragma omp parallel for
     for (size_t j = 0; j < m; j++) {
-        mpz_init(beta[j]);
-        mpz_randomm_inv_aes(beta[j], rng, get_moduli(sp)[1]);
-
         mpz_set_ui(y, c->consts[j]);
         obf->yhat[j] = encode(y, beta[j], ix_y, sp, rng);
     }
@@ -89,6 +93,7 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
 
     mpz_t Cstar [o];
     obf->Chatstar = zim_malloc(o * sizeof(encoding*));
+    #pragma omp parallel for
     for (size_t k = 0; k < o; k++) {
         mpz_init(Cstar[k]);
         acirc_eval_mpz_mod(Cstar[k], c, c->outrefs[k], alpha, beta, get_moduli(sp)[1]);

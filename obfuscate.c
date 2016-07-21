@@ -53,6 +53,11 @@ int main (int argc, char **argv)
         exit(1);
     }
 
+    char *dot = strstr(acirc_filename, ".acirc");
+    if (dot == NULL) {
+        fprintf(stderr, "[obfuscate] error: unknown circuit format \"%s\"", acirc_filename);
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
     // all right, lets get to it!
 
@@ -71,8 +76,12 @@ int main (int argc, char **argv)
     secret_params *sp = secret_params_create(c, lambda, rng, fake);
     obfuscation  *obf = obfuscate(c, sp, rng);
 
-    if (!output_filename_set)
-        sprintf(output_filename, "%s.%lu.zim", acirc_filename, lambda);
+    if (!output_filename_set) {
+        char prefix[1024];
+        memcpy(prefix, acirc_filename, dot - acirc_filename);
+        prefix[dot - acirc_filename] = '\0';
+        sprintf(output_filename, "%s.%lu.zim", prefix, lambda);
+    }
     FILE *obf_fp = fopen(output_filename, "w");
     obfuscation_write(obf_fp, obf);
 

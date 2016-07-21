@@ -1,7 +1,7 @@
 CC 	   = gcc
 CFLAGS = -Wall -Wno-unused-result -Wno-pointer-sign -Wno-switch \
 		 --std=gnu11 -g \
-		 # -fopenmp
+		 -fopenmp
 
 IFLAGS = -Isrc -Ibuild/include
 LFLAGS = -lacirc -lgmp -lm -lclt13 -laesrand -Lbuild/lib -Wl,-rpath -Wl,build/lib
@@ -29,7 +29,8 @@ deepclean: clean
 
 clean:
 	$(RM) src/*.o
-	$(RM) -r circuits/*.acirc.*.zim
+	$(RM) *.zim
+	$(RM) circuits/*.zim
 	$(RM) $(OBJS)
 	$(RM) obfuscate evaluate
 	$(RM) vgcore.*
