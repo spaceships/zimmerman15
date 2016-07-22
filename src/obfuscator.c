@@ -55,7 +55,8 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
             mpz_init_set_ui(b_mpz, b);
 
             // create the xhat and uhat encodings
-            obf_index *ix_x = obf_index_create_x(n, i, b);
+            obf_index *ix_x = obf_index_create(n);
+            IX_X(ix_x, i, b) = 1;
             obf->xhat[i][b] = encode(b_mpz, alpha[i], ix_x, sp, rng);
             obf->uhat[i][b] = encode(one,   one,      ix_x, sp, rng);
             obf_index_destroy(ix_x);
@@ -78,7 +79,8 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
                 obf_index_destroy(ix_z);
 
                 // create the what encodings
-                obf_index *ix_w = obf_index_create_w(n, i);
+                obf_index *ix_w = obf_index_create(n);
+                IX_W(ix_w, i) = 1;
                 obf->what[i][b][k] = encode(zero, gamma[i][b][k], ix_w, sp, rng);
                 obf_index_destroy(ix_w);
             }
@@ -89,7 +91,8 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
     // create the yhat and vhat encodings
     mpz_t y;
     mpz_init(y);
-    obf_index *ix_y = obf_index_create_y(n);
+    obf_index *ix_y = obf_index_create(n);
+    IX_Y(ix_y) = 1;
     obf->yhat = zim_malloc(m * sizeof(encoding*));
     #pragma omp parallel for
     for (size_t j = 0; j < m; j++) {

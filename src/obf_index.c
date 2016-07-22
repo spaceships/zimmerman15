@@ -2,22 +2,11 @@
 
 #include <assert.h>
 
-void obf_index_init (obf_index *ix, size_t n)
+static void obf_index_init (obf_index *ix, size_t n)
 {
     ix->n = n;
     ix->nzs = 4 * ix->n + 1;
     ix->pows = zim_calloc(ix->nzs, sizeof(ul));
-}
-
-void obf_index_clear (obf_index *ix)
-{
-    free(ix->pows);
-}
-
-void obf_index_destroy (obf_index *ix)
-{
-    obf_index_clear(ix);
-    free(ix);
 }
 
 obf_index* obf_index_create (size_t n)
@@ -35,24 +24,19 @@ obf_index* obf_index_copy (const obf_index *ix)
     return new;
 }
 
+void obf_index_destroy (obf_index *ix)
+{
+    free(ix->pows);
+    free(ix);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 void obf_index_add (obf_index *rop, obf_index *x, obf_index *y)
 {
     assert(x->nzs == y->nzs);
     assert(y->nzs == rop->nzs);
     ARRAY_ADD(rop->pows, x->pows, y->pows, rop->nzs);
-}
-
-void obf_index_pow (obf_index *rop, obf_index *x, ul pow)
-{
-    assert(x->nzs == rop->nzs);
-    if (pow == 0) {
-        free(rop->pows);
-        rop->pows = zim_calloc(rop->nzs, sizeof(ul));
-    } else {
-        for (ul i = 1; i < pow; i++) {
-            ARRAY_ADD(rop->pows, x->pows, x->pows, rop->nzs);
-        }
-    }
 }
 
 void obf_index_set (obf_index *rop, const obf_index *x)
@@ -67,6 +51,8 @@ bool obf_index_eq (const obf_index *x, const obf_index *y)
     assert(x->nzs == y->nzs);
     return ARRAY_EQ(x->pows, y->pows, x->nzs);
 }
+
+////////////////////////////////////////////////////////////////////////////////
 
 obf_index* obf_index_union (obf_index *x, obf_index *y)
 {
@@ -88,6 +74,8 @@ obf_index* obf_index_difference (obf_index *x, obf_index *y)
     }
     return res;
 }
+
+////////////////////////////////////////////////////////////////////////////////
 
 void obf_index_print (obf_index *ix)
 {
@@ -137,33 +125,5 @@ obf_index* obf_index_create_toplevel (acirc *c)
         IX_Z(ix, i) = 1;
         IX_W(ix, i) = 1;
     }
-    return ix;
-}
-
-obf_index* obf_index_create_x (size_t n, size_t i, size_t b)
-{
-    obf_index *ix = obf_index_create(n);
-    IX_X(ix, i, b) = 1;
-    return ix;
-}
-
-obf_index* obf_index_create_y (size_t n)
-{
-    obf_index *ix = obf_index_create(n);
-    IX_Y(ix) = 1;
-    return ix;
-}
-
-obf_index* obf_index_create_z (size_t n, size_t i)
-{
-    obf_index *ix = obf_index_create(n);
-    IX_Z(ix, i) = 1;
-    return ix;
-}
-
-obf_index* obf_index_create_w (size_t n, size_t i)
-{
-    obf_index *ix = obf_index_create(n);
-    IX_W(ix, i) = 1;
     return ix;
 }

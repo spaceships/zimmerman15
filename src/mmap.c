@@ -60,6 +60,8 @@ mpz_t* get_moduli (secret_params *s)
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
 public_params* public_params_create (secret_params *sp)
 {
     public_params *pp = zim_malloc(sizeof(public_params));
@@ -81,64 +83,37 @@ public_params* public_params_create (secret_params *sp)
     return pp;
 }
 
-void public_params_clear (public_params *p)
-{
-    if (p->my_toplevel) {
-        obf_index_clear(p->toplevel);
-        free(p->toplevel);
-    }
-
-    if (p->my_moduli) {
-        mpz_vect_destroy(p->moduli, 2);
-    }
-
-    if (p->my_clt_pp) {
-        clt_pp_clear(p->clt_pp);
-        free(p->clt_pp);
-    }
-}
-
 void public_params_destroy (public_params *pp)
 {
-    public_params_clear(pp);
+    if (pp->my_toplevel) {
+        obf_index_destroy(pp->toplevel);
+    }
+    if (pp->my_moduli) {
+        mpz_vect_destroy(pp->moduli, 2);
+    }
+    if (pp->my_clt_pp) {
+        clt_pp_clear(pp->clt_pp);
+        free(pp->clt_pp);
+    }
     free(pp);
+}
+
+int public_params_eq (public_params *pp1, public_params *pp2)
+{
+    assert(obf_index_eq(pp1->toplevel, pp2->toplevel));
+    assert(pp1->fake == pp2->fake);
+    if (pp1->fake) {
+        assert(mpz_vect_eq(pp1->moduli, pp2->moduli, NSLOTS));
+    } else {
+        assert(mpz_eq(pp1->clt_pp->x0,  pp2->clt_pp->x0));
+        assert(mpz_eq(pp1->clt_pp->pzt, pp2->clt_pp->pzt));
+        assert(pp1->clt_pp->nu == pp1->clt_pp->nu);
+    }
+    return 1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // encodings
-
-void encoding_set (encoding *rop, encoding *x)
-{
-    obf_index_set(rop->index, x->index);
-    if (x->fake) {
-        for (int i = 0; i < NSLOTS; i++) {
-            mpz_set(rop->slots[i], x->slots[i]);
-        }
-    } else {
-        mpz_set(rop->clt, x->clt);
-    }
-}
-
-encoding* encoding_copy (encoding *x)
-{
-    encoding *res = encoding_create(x->index->n, x->fake);
-    encoding_set(res, x);
-    return res;
-}
-
-encoding* encoding_create (size_t n, int fake)
-{
-    encoding *x = zim_malloc(sizeof(encoding));
-    x->index = obf_index_create(n);
-    x->fake = fake;
-    if (x->fake) {
-        x->slots = mpz_vect_create(2);
-    }
-    else {
-        mpz_init(x->clt);
-    }
-    return x;
-}
 
 encoding* encode (mpz_t inp0, mpz_t inp1, const obf_index *ix, secret_params *sp, aes_randstate_t rng)
 {
@@ -164,10 +139,37 @@ encoding* encode (mpz_t inp0, mpz_t inp1, const obf_index *ix, secret_params *sp
     return x;
 }
 
+encoding* encoding_create (size_t n, int fake)
+{
+    encoding *x = zim_malloc(sizeof(encoding));
+    x->index = obf_index_create(n);
+    x->fake = fake;
+    if (x->fake) {
+        x->slots = mpz_vect_create(2);
+    }
+    else {
+        mpz_init(x->clt);
+    }
+    return x;
+}
+
+encoding* encoding_copy (encoding *x)
+{
+    encoding *res = encoding_create(x->index->n, x->fake);
+    obf_index_set(res->index, x->index);
+    if (x->fake) {
+        for (int i = 0; i < NSLOTS; i++) {
+            mpz_set(res->slots[i], x->slots[i]);
+        }
+    } else {
+        mpz_set(res->clt, x->clt);
+    }
+    return res;
+}
+
 void encoding_destroy (encoding *x)
 {
-    obf_index_clear(x->index);
-    free(x->index);
+    obf_index_destroy(x->index);
     if (x->fake) {
         for (int i = 0; i < NSLOTS; i++) {
             mpz_clear(x->slots[i]);
@@ -288,30 +290,6 @@ public_params* public_params_read (FILE *fp)
     return pp;
 }
 
-// typedef struct {
-//     obf_index *toplevel;
-//     clt_pp *clt_pp;
-//     mpz_t *moduli;          // fake moduli
-//     int fake;
-//     int my_toplevel;
-//     int my_clt_pp;
-//     int my_moduli;
-// } public_params;
-
-int public_params_eq (public_params *pp1, public_params *pp2)
-{
-    assert(obf_index_eq(pp1->toplevel, pp2->toplevel));
-    assert(pp1->fake == pp2->fake);
-    if (pp1->fake) {
-        assert(mpz_vect_eq(pp1->moduli, pp2->moduli, NSLOTS));
-    } else {
-        assert(mpz_eq(pp1->clt_pp->x0,  pp2->clt_pp->x0));
-        assert(mpz_eq(pp1->clt_pp->pzt, pp2->clt_pp->pzt));
-        assert(pp1->clt_pp->nu == pp1->clt_pp->nu);
-    }
-    return 1;
-}
-
 void public_params_write (FILE *const fp, public_params *pp)
 {
     int_write(fp, pp->fake);
@@ -328,50 +306,6 @@ void public_params_write (FILE *const fp, public_params *pp)
     }
 }
 
-encoding* encoding_read (FILE *fp)
-{
-    encoding *x = zim_malloc(sizeof(encoding));
-
-    int_read(&(x->fake), fp);
-    GET_SPACE(fp);
-
-    x->index = zim_malloc(sizeof(obf_index));
-    obf_index_read(x->index, fp);
-    GET_SPACE(fp);
-
-    if (x->fake) {
-        x->slots = zim_malloc(NSLOTS * sizeof(mpz_t));
-        for (int i = 0; i < NSLOTS; i++) {
-            mpz_init(x->slots[i]);
-        }
-        clt_vector_fread(fp, x->slots, NSLOTS);
-    }
-
-    else {
-        mpz_init(x->clt);
-        clt_elem_fread(fp, x->clt);
-    }
-
-    return x;
-}
-
-void encoding_write (FILE *fp, encoding *x)
-{
-    int_write(fp, x->fake);
-    PUT_SPACE(fp);
-
-    obf_index_write(fp, x->index);
-    PUT_SPACE(fp);
-
-    if (x->fake) {
-        clt_vector_fsave(fp, x->slots, NSLOTS);
-    }
-
-    else {
-        clt_elem_fsave(fp, x->clt);
-    }
-}
-
 void encoding_print (encoding *x)
 {
     puts("=encoding=");
@@ -383,3 +317,40 @@ void encoding_print (encoding *x)
         gmp_printf("%Zd\n", x->clt);
     }
 }
+
+encoding* encoding_read (FILE *fp)
+{
+    encoding *x = zim_malloc(sizeof(encoding));
+    int_read(&(x->fake), fp);
+    GET_SPACE(fp);
+    x->index = zim_malloc(sizeof(obf_index));
+    obf_index_read(x->index, fp);
+    GET_SPACE(fp);
+    if (x->fake) {
+        x->slots = zim_malloc(NSLOTS * sizeof(mpz_t));
+        for (int i = 0; i < NSLOTS; i++) {
+            mpz_init(x->slots[i]);
+        }
+        clt_vector_fread(fp, x->slots, NSLOTS);
+    }
+    else {
+        mpz_init(x->clt);
+        clt_elem_fread(fp, x->clt);
+    }
+    return x;
+}
+
+void encoding_write (FILE *fp, encoding *x)
+{
+    int_write(fp, x->fake);
+    PUT_SPACE(fp);
+    obf_index_write(fp, x->index);
+    PUT_SPACE(fp);
+    if (x->fake) {
+        clt_vector_fsave(fp, x->slots, NSLOTS);
+    }
+    else {
+        clt_elem_fsave(fp, x->clt);
+    }
+}
+
