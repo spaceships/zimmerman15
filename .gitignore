@@ -5,3 +5,4 @@ clt13
 libacirc
 libaesrand
 src/*.o
+circuits/*.zim
