@@ -2,8 +2,8 @@
 #define __ZIMMERMAN_EVALUATOR__
 
 #include "obfuscator.h"
-#include "mmap.h"
+#include <acirc.h>
 
-void evaluate (int *res, int *inputs, obfuscation *obf);
+void evaluate (int *rop, acirc *c, int *inputs, obfuscation *obf);
 
 #endif

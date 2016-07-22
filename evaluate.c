@@ -16,16 +16,16 @@ void usage()
 int main (int argc, char **argv)
 {
     ul lambda = 10;
-    int output_filename_set = 0;
-    char output_filename [1024];
+    int input_filename_set = 0;
+    char input_filename [1024];
     int arg;
     while ((arg = getopt(argc, argv, "l:o:")) != -1) {
         if (arg == 'l') {
             lambda = atol(optarg);
         }
         else if (arg == 'o') {
-            strcpy(output_filename, optarg);
-            output_filename_set = 1;
+            strcpy(input_filename, optarg);
+            input_filename_set = 1;
         } else {
             usage();
             exit(EXIT_FAILURE);
@@ -36,13 +36,18 @@ int main (int argc, char **argv)
     if (optind >= argc) {
         fprintf(stderr, "[obfuscate] error: circuit required\n");
         usage();
-        exit(1);
+        exit(EXIT_FAILURE);
     } else if (optind == argc - 1) {
         acirc_filename = argv[optind];
     } else {
         fprintf(stderr, "[obfuscate] error: unexpected argument \"%s\"\n", argv[optind + 1]);
         usage();
-        exit(1);
+        exit(EXIT_FAILURE);
+    }
+
+    char *dot = strstr(acirc_filename, ".acirc");
+    if (dot == NULL) {
+        fprintf(stderr, "[obfuscate] error: unknown circuit format \"%s\"\n", acirc_filename);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -50,14 +55,25 @@ int main (int argc, char **argv)
 
     acirc *c = acirc_from_file(acirc_filename);
 
-    if (!output_filename_set)
-        sprintf(output_filename, "%s.%lu.zim", acirc_filename, lambda);
-    FILE *obf_fp = fopen(output_filename, "r");
+    if (!input_filename_set) {
+        char prefix[1024];
+        memcpy(prefix, acirc_filename, dot - acirc_filename);
+        prefix[dot - acirc_filename] = '\0';
+        sprintf(input_filename, "%s.%lu.zim", prefix, lambda);
+    }
+    printf("reading obfuscation from %s\n", input_filename);
+    FILE *obf_fp = fopen(input_filename, "r");
+    if (obf_fp == NULL) {
+        fprintf(stderr, "[obfuscate] error: could not open \"%s\"\n", input_filename);
+        exit(EXIT_FAILURE);
+    }
     obfuscation *obf = obfuscation_read(obf_fp);
+    fclose(obf_fp);
 
+    printf("evaluating...\n");
     int res[c->noutputs];
     for (int i = 0; i < c->ntests; i++) {
-        evaluate(res, c->testinps[i], obf);
+        evaluate(res, c, c->testinps[i], obf);
         bool test_ok = ARRAY_EQ(res, c->testouts[i], c->noutputs);
         if (!test_ok)
             printf("\033[1;41m");

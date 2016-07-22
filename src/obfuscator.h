@@ -14,8 +14,8 @@ typedef struct {
     public_params *pp;
     encoding ***xhat;     // i \in [ninputs], b \in {0,1}
     encoding ***uhat;
-    encoding ***zhat;
-    encoding ***what;
+    encoding ****zhat;
+    encoding ****what;
     encoding **yhat;       // j \in [nconsts]
     encoding *vhat;
     encoding **Chatstar;   // o \in [noutputs]

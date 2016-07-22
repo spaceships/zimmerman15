@@ -37,7 +37,8 @@ obf_index* obf_index_copy (const obf_index *ix)
 
 void obf_index_add (obf_index *rop, obf_index *x, obf_index *y)
 {
-    assert((x->nzs == y->nzs) == rop->nzs);
+    assert(x->nzs == y->nzs);
+    assert(y->nzs == rop->nzs);
     ARRAY_ADD(rop->pows, x->pows, y->pows, rop->nzs);
 }
 
@@ -67,15 +68,40 @@ bool obf_index_eq (const obf_index *x, const obf_index *y)
     return ARRAY_EQ(x->pows, y->pows, x->nzs);
 }
 
+obf_index* obf_index_union (obf_index *x, obf_index *y)
+{
+    assert(x->nzs == y->nzs);
+    obf_index *res = obf_index_create(x->n);
+    for (size_t i = 0; i < x->nzs; i++) {
+        res->pows[i] = MAX(x->pows[i], y->pows[i]);
+    }
+    return res;
+}
+
+obf_index* obf_index_difference (obf_index *x, obf_index *y)
+{
+    assert(x->nzs == y->nzs);
+    obf_index *res = obf_index_create(x->n);
+    for (size_t i = 0; i < x->nzs; i++) {
+        res->pows[i] = x->pows[i] - y->pows[i];
+        assert(res->pows[i] >= 0);
+    }
+    return res;
+}
+
 void obf_index_print (obf_index *ix)
 {
+    puts("=obf_index=");
     array_print_ui(ix->pows, ix->nzs);
     puts("");
+    printf("n=%lu nzs=%lu\n", ix->n, ix->nzs);
 }
 
 void obf_index_read (obf_index *ix, FILE *fp)
 {
     ulong_read(&(ix->nzs), fp);
+    GET_SPACE(fp);
+    ulong_read(&(ix->n), fp);
     GET_SPACE(fp);
     ix->pows = zim_malloc(ix->nzs * sizeof(ul));
     for (size_t i = 0; i < ix->nzs; i++) {
@@ -88,6 +114,8 @@ void obf_index_read (obf_index *ix, FILE *fp)
 void obf_index_write (FILE *fp, obf_index *ix)
 {
     ulong_write(fp, ix->nzs);
+    PUT_SPACE(fp);
+    ulong_write(fp, ix->n);
     PUT_SPACE(fp);
     for (size_t i = 0; i < ix->nzs; i++) {
         ulong_write(fp, ix->pows[i]);

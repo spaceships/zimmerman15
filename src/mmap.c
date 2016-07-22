@@ -111,12 +111,33 @@ void encoding_set (encoding *rop, encoding *x)
 {
     obf_index_set(rop->index, x->index);
     if (x->fake) {
-        for (int i = 0; NSLOTS; i++) {
+        for (int i = 0; i < NSLOTS; i++) {
             mpz_set(rop->slots[i], x->slots[i]);
         }
     } else {
         mpz_set(rop->clt, x->clt);
     }
+}
+
+encoding* encoding_copy (encoding *x)
+{
+    encoding *res = encoding_create(x->index->n, x->fake);
+    encoding_set(res, x);
+    return res;
+}
+
+encoding* encoding_create (size_t n, int fake)
+{
+    encoding *x = zim_malloc(sizeof(encoding));
+    x->index = obf_index_create(n);
+    x->fake = fake;
+    if (x->fake) {
+        x->slots = mpz_vect_create(2);
+    }
+    else {
+        mpz_init(x->clt);
+    }
+    return x;
 }
 
 encoding* encode (mpz_t inp0, mpz_t inp1, const obf_index *ix, secret_params *sp, aes_randstate_t rng)
@@ -348,5 +369,17 @@ void encoding_write (FILE *fp, encoding *x)
 
     else {
         clt_elem_fsave(fp, x->clt);
+    }
+}
+
+void encoding_print (encoding *x)
+{
+    puts("=encoding=");
+    obf_index_print(x->index);
+    printf("fake=%d\n", x->fake);
+    if (x->fake) {
+        gmp_printf("[%Zd, %Zd]\n", x->slots[0], x->slots[1]);
+    } else {
+        gmp_printf("%Zd\n", x->clt);
     }
 }

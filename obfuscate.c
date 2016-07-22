@@ -44,18 +44,18 @@ int main (int argc, char **argv)
     if (optind >= argc) {
         fprintf(stderr, "[obfuscate] error: circuit required\n");
         usage();
-        exit(1);
+        exit(EXIT_FAILURE);
     } else if (optind == argc - 1) {
         acirc_filename = argv[optind];
     } else {
         fprintf(stderr, "[obfuscate] error: unexpected argument \"%s\"\n", argv[optind + 1]);
         usage();
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     char *dot = strstr(acirc_filename, ".acirc");
     if (dot == NULL) {
-        fprintf(stderr, "[obfuscate] error: unknown circuit format \"%s\"", acirc_filename);
+        fprintf(stderr, "[obfuscate] error: unknown circuit format \"%s\"\n", acirc_filename);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -83,7 +83,12 @@ int main (int argc, char **argv)
         sprintf(output_filename, "%s.%lu.zim", prefix, lambda);
     }
     FILE *obf_fp = fopen(output_filename, "w");
+    if (obf_fp == NULL) {
+        fprintf(stderr, "[obfuscate] error: could not open \"%s\"\n", output_filename);
+        exit(EXIT_FAILURE);
+    }
     obfuscation_write(obf_fp, obf);
+    fclose(obf_fp);
 
     acirc_destroy(c);
     aes_randclear(rng);

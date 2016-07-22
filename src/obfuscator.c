@@ -18,14 +18,17 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
     mpz_set_ui(one, 1);
 
     mpz_t alpha [n];
-    mpz_t gamma [n][2];
-    mpz_t delta [n][2];
+    mpz_t gamma [n][2][o];
+    mpz_t delta [n][2][o];
     for (size_t i = 0; i < n; i++) {
-        mpz_inits(alpha[i], gamma[i][0], gamma[i][1], delta[i][0], delta[i][1], NULL);
+        mpz_init(alpha[i]);
         mpz_randomm_inv_aes(alpha[i],    rng, get_moduli(sp)[1]);
         for (size_t b = 0; b <= 1; b++) {
-            mpz_randomm_inv_aes(gamma[i][b], rng, get_moduli(sp)[1]);
-            mpz_randomm_inv_aes(delta[i][b], rng, get_moduli(sp)[0]);
+            for (size_t k = 0; k < o; k++) {
+                mpz_inits(gamma[i][b][k], delta[i][b][k], NULL);
+                mpz_randomm_inv_aes(gamma[i][b][k], rng, get_moduli(sp)[1]);
+                mpz_randomm_inv_aes(delta[i][b][k], rng, get_moduli(sp)[0]);
+            }
         }
     }
 
@@ -35,19 +38,17 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
         mpz_randomm_inv_aes(beta[j], rng, get_moduli(sp)[1]);
     }
 
-    obf->xhat = zim_malloc(n * sizeof(mpz_t*));
-    obf->uhat = zim_malloc(n * sizeof(mpz_t*));
-    obf->zhat = zim_malloc(n * sizeof(mpz_t*));
-    obf->what = zim_malloc(n * sizeof(mpz_t*));
+    obf->xhat = zim_malloc(n * sizeof(encoding**));
+    obf->uhat = zim_malloc(n * sizeof(encoding**));
+    obf->zhat = zim_malloc(n * sizeof(encoding***));
+    obf->what = zim_malloc(n * sizeof(encoding***));
 
     #pragma omp parallel for
     for (size_t i = 0; i < n; i++) {
         obf->xhat[i] = zim_malloc(2 * sizeof(encoding*));
         obf->uhat[i] = zim_malloc(2 * sizeof(encoding*));
-        obf->zhat[i] = zim_malloc(2 * sizeof(encoding*));
-        obf->what[i] = zim_malloc(2 * sizeof(encoding*));
-
-        ul d = acirc_max_var_degree(c, i); // used for creating the zhat encodings
+        obf->zhat[i] = zim_malloc(2 * sizeof(encoding**));
+        obf->what[i] = zim_malloc(2 * sizeof(encoding**));
 
         for (ul b = 0; b <= 1; b++) {
             mpz_t b_mpz;
@@ -59,20 +60,28 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
             obf->uhat[i][b] = encode(one,   one,      ix_x, sp, rng);
             obf_index_destroy(ix_x);
 
-            // create the zhat encodings
-            obf_index *ix_z = obf_index_create(n);
-            IX_X(ix_z, i, 1-b) = 1;
-            obf_index_pow(ix_z, ix_z, d);
-            IX_Z(ix_z, i) = 1;
-            IX_W(ix_z, i) = 1;
-            obf->zhat[i][b] = encode(delta[i][b], gamma[i][b], ix_z, sp, rng);
-            obf_index_destroy(ix_z);
+            obf->zhat[i][b] = zim_malloc(o * sizeof(encoding*));
+            obf->what[i][b] = zim_malloc(o * sizeof(encoding*));
+            for (size_t k = 0; k < o; k++) {
+                // create the zhat encodings for each output wire
+                ul d     = acirc_var_degree(c, c->outrefs[k], i);
+                ul dmax  = acirc_max_var_degree(c, i);
+                ul cd    = acirc_const_degree(c, c->outrefs[k]);
+                ul cdmax = acirc_max_const_degree(c);
+                obf_index *ix_z = obf_index_create(n);
+                IX_Y(ix_z) = cdmax - cd;
+                IX_X(ix_z, i, 1) = dmax - d;
+                IX_X(ix_z, i, 1-b) = dmax;
+                IX_Z(ix_z, i) = 1;
+                IX_W(ix_z, i) = 1;
+                obf->zhat[i][b][k] = encode(delta[i][b][k], gamma[i][b][k], ix_z, sp, rng);
+                obf_index_destroy(ix_z);
 
-            // create the what encodings
-            obf_index *ix_w = obf_index_create_w(n, i);
-            obf->what[i][b] = encode(zero, gamma[i][b], ix_w, sp, rng);
-            obf_index_destroy(ix_w);
-
+                // create the what encodings
+                obf_index *ix_w = obf_index_create_w(n, i);
+                obf->what[i][b][k] = encode(zero, gamma[i][b][k], ix_w, sp, rng);
+                obf_index_destroy(ix_w);
+            }
             mpz_clear(b_mpz);
         }
     }
@@ -99,10 +108,10 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
         acirc_eval_mpz_mod(Cstar[k], c, c->outrefs[k], alpha, beta, get_moduli(sp)[1]);
 
         obf_index *ix_c = obf_index_create(n);
-        IX_Y(ix_c) = acirc_const_degree(c, k);
+        IX_Y(ix_c) = acirc_max_const_degree(c);
 
         for (size_t i = 0; i < n; i++) {
-            ul d = acirc_var_degree(c, k, i);
+            ul d = acirc_max_var_degree(c, i);
             IX_X(ix_c, i, 0) = d;
             IX_X(ix_c, i, 1) = d;
             IX_Z(ix_c, i) = 1;
@@ -115,8 +124,14 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
     // cleanup
     mpz_clears(zero, one, NULL);
 
-    for (size_t i = 0; i < n; i++)
-        mpz_clears(alpha[i], gamma[i][0], gamma[i][1], delta[i][0], delta[i][1], NULL);
+    for (size_t i = 0; i < n; i++) {
+        mpz_clear(alpha[i]);
+        for (size_t b = 0; b <= 1; b++) {
+            for (size_t k = 0; k < o; k++) {
+                mpz_clears(delta[i][b][k], gamma[i][b][k], NULL);
+            }
+        }
+    }
     for (size_t j = 0; j < m; j++)
         mpz_clear(beta[j]);
     for (size_t k = 0; k < o; k++)
@@ -132,8 +147,12 @@ void obfuscation_destroy (obfuscation *obf)
         for (size_t b = 0; b <= 1; b++) {
             encoding_destroy(obf->xhat[i][b]);
             encoding_destroy(obf->uhat[i][b]);
-            encoding_destroy(obf->zhat[i][b]);
-            encoding_destroy(obf->what[i][b]);
+            for (size_t k = 0; k < obf->noutputs; k++) {
+                encoding_destroy(obf->zhat[i][b][k]);
+                encoding_destroy(obf->what[i][b][k]);
+            }
+            free(obf->zhat[i][b]);
+            free(obf->what[i][b]);
         }
         free(obf->xhat[i]);
         free(obf->uhat[i]);
@@ -144,7 +163,7 @@ void obfuscation_destroy (obfuscation *obf)
     free(obf->uhat);
     free(obf->zhat);
     free(obf->what);
-    for (size_t j = 0; j < obf->noutputs; j++) {
+    for (size_t j = 0; j < obf->nconsts; j++) {
         encoding_destroy(obf->yhat[j]);
     }
     free(obf->yhat);
@@ -173,10 +192,12 @@ void obfuscation_write (FILE *fp, obfuscation *obf)
             PUT_NEWLINE(fp);
             encoding_write(fp, obf->uhat[i][b]);
             PUT_NEWLINE(fp);
-            encoding_write(fp, obf->zhat[i][b]);
-            PUT_NEWLINE(fp);
-            encoding_write(fp, obf->what[i][b]);
-            PUT_NEWLINE(fp);
+            for (size_t k = 0; k < obf->noutputs; k++) {
+                encoding_write(fp, obf->zhat[i][b][k]);
+                PUT_NEWLINE(fp);
+                encoding_write(fp, obf->what[i][b][k]);
+                PUT_NEWLINE(fp);
+            }
         }
     }
     for (size_t j = 0; j < obf->nconsts; j++) {
@@ -210,17 +231,21 @@ obfuscation* obfuscation_read (FILE *const fp)
     for (size_t i = 0; i < obf->ninputs; i++) {
         obf->xhat[i] = zim_malloc(2 * sizeof(encoding*));
         obf->uhat[i] = zim_malloc(2 * sizeof(encoding*));
-        obf->zhat[i] = zim_malloc(2 * sizeof(encoding*));
-        obf->what[i] = zim_malloc(2 * sizeof(encoding*));
+        obf->zhat[i] = zim_malloc(2 * sizeof(encoding**));
+        obf->what[i] = zim_malloc(2 * sizeof(encoding**));
         for (size_t b = 0; b <= 1; b++) {
             obf->xhat[i][b] = encoding_read(fp);
             GET_NEWLINE(fp);
             obf->uhat[i][b] = encoding_read(fp);
             GET_NEWLINE(fp);
-            obf->zhat[i][b] = encoding_read(fp);
-            GET_NEWLINE(fp);
-            obf->what[i][b] = encoding_read(fp);
-            GET_NEWLINE(fp);
+            obf->zhat[i][b] = zim_malloc(obf->noutputs * sizeof(encoding*));
+            obf->what[i][b] = zim_malloc(obf->noutputs * sizeof(encoding*));
+            for (size_t k = 0; k < obf->noutputs; k++) {
+                obf->zhat[i][b][k] = encoding_read(fp);
+                GET_NEWLINE(fp);
+                obf->what[i][b][k] = encoding_read(fp);
+                GET_NEWLINE(fp);
+            }
         }
     }
     obf->yhat = zim_malloc(obf->nconsts * sizeof(encoding*));
@@ -249,8 +274,10 @@ int obf_eq (obfuscation *obf1, obfuscation *obf2)
         for (size_t b = 0; b <= 1; b++) {
             assert(encoding_eq(obf1->xhat[i][b], obf2->xhat[i][b]));
             assert(encoding_eq(obf1->uhat[i][b], obf2->uhat[i][b]));
-            assert(encoding_eq(obf1->zhat[i][b], obf2->zhat[i][b]));
-            assert(encoding_eq(obf1->what[i][b], obf2->what[i][b]));
+            for (size_t k = 0; k < obf1->noutputs; k++) {
+                assert(encoding_eq(obf1->zhat[i][b][k], obf2->zhat[i][b][k]));
+                assert(encoding_eq(obf1->what[i][b][k], obf2->what[i][b][k]));
+            }
         }
     }
     for (size_t j = 0; j < obf1->nconsts; j++) {
