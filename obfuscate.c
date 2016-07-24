@@ -3,6 +3,7 @@
 
 #include <aesrand.h>
 #include <assert.h>
+#include <acirc.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -73,8 +74,10 @@ int main (int argc, char **argv)
     aes_randstate_t rng;
     aes_randinit(rng);
 
+    puts("initializing secret params...");
     secret_params *sp = secret_params_create(c, lambda, rng, fake);
-    obfuscation  *obf = obfuscate(c, sp, rng);
+    puts("obfuscating...");
+    obfuscation *obf = obfuscate(c, sp, rng);
 
     if (!output_filename_set) {
         char prefix[1024];
