@@ -212,3 +212,16 @@ void int_write (FILE *const fp, int x) {
 void int_read (int *x, FILE *const fp) {
     assert(fscanf(fp, "%d", x) > 0);
 }
+
+#define PBSTR "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
+#define PBWIDTH 60
+
+void print_progress (size_t cur, size_t total)
+{
+    double percentage = (double) cur / total;
+    int val  = percentage * 100;
+    int lpad = percentage * PBWIDTH;
+    int rpad = PBWIDTH - lpad;
+    printf("\r%3d%% [%.*s%*s] %lu/%lu", val, lpad, PBSTR, rpad, "", cur, total);
+    fflush(stdout);
+}

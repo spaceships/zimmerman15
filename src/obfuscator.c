@@ -4,6 +4,10 @@
 
 obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
 {
+    size_t encode_ct = 0;
+    size_t encode_n  = NUM_ENCODINGS(c);
+    print_progress(encode_ct, encode_n);
+
     obfuscation *obf = zim_malloc(sizeof(obfuscation));
 
     int n = obf->ninputs  = c->ninputs;
@@ -61,6 +65,12 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
             obf->uhat[i][b] = encode(one,   one,      ix_x, sp, rng);
             obf_index_destroy(ix_x);
 
+            #pragma omp critical
+            {
+                encode_ct += 2;
+                print_progress(encode_ct, encode_n);
+            }
+
             obf->zhat[i][b] = zim_malloc(o * sizeof(encoding*));
             obf->what[i][b] = zim_malloc(o * sizeof(encoding*));
             for (size_t k = 0; k < o; k++) {
@@ -83,24 +93,37 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
                 IX_W(ix_w, i) = 1;
                 obf->what[i][b][k] = encode(zero, gamma[i][b][k], ix_w, sp, rng);
                 obf_index_destroy(ix_w);
+
+                #pragma omp critical
+                {
+                    encode_ct += 2;
+                    print_progress(encode_ct, encode_n);
+                }
+
             }
             mpz_clear(b_mpz);
         }
     }
 
     // create the yhat and vhat encodings
-    mpz_t y;
-    mpz_init(y);
     obf_index *ix_y = obf_index_create(n);
     IX_Y(ix_y) = 1;
     obf->yhat = zim_malloc(m * sizeof(encoding*));
     #pragma omp parallel for
     for (size_t j = 0; j < m; j++) {
+        mpz_t y;
+        mpz_init(y);
         mpz_set_ui(y, c->consts[j]);
         obf->yhat[j] = encode(y, beta[j], ix_y, sp, rng);
+        mpz_clear(y);
+        #pragma omp critical
+        {
+            encode_ct++;
+            print_progress(encode_ct, encode_n);
+        }
     }
-    mpz_clear(y);
     obf->vhat = encode(one, one, ix_y, sp, rng); // set vhat
+    print_progress(encode_ct++, encode_n);
     obf_index_destroy(ix_y);
 
     mpz_t Cstar [o];
@@ -122,7 +145,14 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
 
         obf->Chatstar[k] = encode(zero, Cstar[k], ix_c, sp, rng);
         obf_index_destroy(ix_c);
+
+        #pragma omp critical
+        {
+            encode_ct++;
+            print_progress(encode_ct, encode_n);
+        }
     }
+    puts("");
 
     // cleanup
     mpz_clears(zero, one, NULL);

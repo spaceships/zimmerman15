@@ -44,6 +44,8 @@ void ulong_write (FILE *const fp, unsigned long x);
 void int_read  (int *x, FILE *const fp);
 void int_write (FILE *const fp, int x);
 
+void print_progress (size_t cur, size_t total);
+
 #define PUT_NEWLINE(fp) assert(fputc('\n', (fp)) != EOF);
 #define GET_NEWLINE(fp) assert(fgetc(fp) == '\n');
 #define PUT_SPACE(fp)   assert(fputc(' ', (fp)) != EOF);

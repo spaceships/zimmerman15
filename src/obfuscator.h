@@ -7,18 +7,26 @@
 #include <clt13.h>
 #include <gmp.h>
 
+#define NUM_ENCODINGS(c) ( \
+        (c)->ninputs * 2 * 2 + \
+        (c)->ninputs * 2 * (c)->noutputs * 2 + \
+        (c)->nconsts + \
+        1 + \
+        (c)->noutputs \
+    )
+
 typedef struct {
-    size_t ninputs;
-    size_t nconsts;
-    size_t noutputs;
+    size_t ninputs;         // n
+    size_t nconsts;         // m
+    size_t noutputs;        // o
     public_params *pp;
-    encoding ***xhat;     // i \in [ninputs], b \in {0,1}
-    encoding ***uhat;
-    encoding ****zhat;
-    encoding ****what;
-    encoding **yhat;       // j \in [nconsts]
-    encoding *vhat;
-    encoding **Chatstar;   // o \in [noutputs]
+    encoding ***xhat;       // [n][2]
+    encoding ***uhat;       // [n][2]
+    encoding ****zhat;      // [n][2][o]
+    encoding ****what;      // [n][2][o]
+    encoding **yhat;        // [m]
+    encoding *vhat;         // [1]
+    encoding **Chatstar;    // [o]
 } obfuscation;
 
 obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng);

@@ -20,6 +20,8 @@ void evaluate (int *rop, acirc *c, int *inputs, obfuscation *obf)
     }
 
     for (int k = 0; k < obf->noutputs; k++) {
+        print_progress(k, obf->noutputs);
+
         acircref root = c->outrefs[k];
 
         acirc_topo_levels *topo = acirc_topological_levels(c, root);
@@ -102,6 +104,9 @@ void evaluate (int *rop, acirc *c, int *inputs, obfuscation *obf)
         encoding_destroy(outwire);
         encoding_destroy(tmp);
     }
+
+    print_progress(obf->noutputs, obf->noutputs);
+    puts("");
 
     for (acircref x = 0; x < c->nrefs; x++) {
         if (known[x] && mine[x]) {
