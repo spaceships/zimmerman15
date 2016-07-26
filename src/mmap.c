@@ -276,14 +276,14 @@ public_params* public_params_read (FILE *fp)
         for (int i = 0; i < NSLOTS; i++) {
             mpz_init(pp->moduli[i]);
         }
-        clt_vector_fread(fp, pp->moduli, NSLOTS);
+        assert(clt_vector_fread(fp, pp->moduli, NSLOTS) == 0);
         pp->my_moduli = 1;
         pp->my_clt_pp = 0;
     }
 
     else {
         pp->clt_pp = zim_malloc(sizeof(clt_pp));
-        clt_pp_fread(fp, pp->clt_pp);
+        assert(clt_pp_fread(fp, pp->clt_pp) == 0);
         pp->my_moduli = 0;
         pp->my_clt_pp = 1;
     }
@@ -298,11 +298,11 @@ void public_params_write (FILE *const fp, public_params *pp)
     PUT_NEWLINE(fp);
 
     if (pp->fake) {
-        clt_vector_fsave(fp, pp->moduli, NSLOTS);
+        assert(clt_vector_fsave(fp, pp->moduli, NSLOTS) == 0);
     }
 
     else {
-        clt_pp_fsave(fp, pp->clt_pp);
+        assert(clt_pp_fsave(fp, pp->clt_pp) == 0);
     }
 }
 
