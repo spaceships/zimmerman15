@@ -331,11 +331,11 @@ encoding* encoding_read (FILE *fp)
         for (int i = 0; i < NSLOTS; i++) {
             mpz_init(x->slots[i]);
         }
-        clt_vector_fread(fp, x->slots, NSLOTS);
+        assert(clt_vector_fread(fp, x->slots, NSLOTS) == 0);
     }
     else {
         mpz_init(x->clt);
-        clt_elem_fread(fp, x->clt);
+        assert(clt_elem_fread(fp, x->clt) == 0);
     }
     return x;
 }
@@ -347,10 +347,10 @@ void encoding_write (FILE *fp, encoding *x)
     obf_index_write(fp, x->index);
     PUT_SPACE(fp);
     if (x->fake) {
-        clt_vector_fsave(fp, x->slots, NSLOTS);
+        assert(clt_vector_fsave(fp, x->slots, NSLOTS) == 0);
     }
     else {
-        clt_elem_fsave(fp, x->clt);
+        assert(clt_elem_fsave(fp, x->clt) == 0);
     }
 }
 
