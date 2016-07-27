@@ -65,8 +65,8 @@ int main (int argc, char **argv)
     acirc *c = acirc_from_file(acirc_filename);
     size_t delta = acirc_delta(c);
 
-    printf("circuit: ninputs=%lu nconsts=%lu ngates=%lu nrefs=%lu delta=%lu\n",
-           c->ninputs, c->nconsts, c->ngates, c->nrefs, delta);
+    printf("circuit: ninputs=%lu noutputs=%lu nconsts=%lu ngates=%lu nrefs=%lu delta=%lu\n",
+           c->ninputs, c->noutputs, c->nconsts, c->ngates, c->nrefs, delta);
 
     printf("obfuscation: fake=%d lambda=%lu kappa=%lu\n",
            fake, lambda, delta + 2*c->ninputs);

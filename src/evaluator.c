@@ -98,12 +98,6 @@ void evaluate (int *rop, acirc *c, int *inputs, obfuscation *obf)
             encoding_mul(tmp, tmp, obf->what[i][inputs[i]][k], obf->pp);
         }
 
-        size_t d = acirc_max_const_degree(c);
-        size_t i = acirc_const_degree(c, c->outrefs[k]);
-        for (; i < d; i++) {
-            encoding_mul(outwire, outwire, obf->vhat, obf->pp);
-        }
-
         if (!obf_index_eq(obf->pp->toplevel, tmp->index)) {
             printf("\n[evaluate] tmp did not reach toplevel\n");
             obf_index_print(tmp->index);

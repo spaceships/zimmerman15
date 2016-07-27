@@ -47,6 +47,25 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
     obf->zhat = zim_malloc(n * sizeof(encoding***));
     obf->what = zim_malloc(n * sizeof(encoding***));
 
+
+    ul con_deg [o];
+    ul con_dmax;
+    ul var_deg [n][o];
+    ul var_dmax [n];
+    for (size_t k = 0; k < o; k++) {
+        con_deg[k] = acirc_const_degree(c, c->outrefs[k]);
+        if (k == 0 || con_deg[k] > con_dmax)
+            con_dmax = con_deg[k];
+    }
+    for (size_t i = 0; i < n; i++) {
+        var_dmax[i] = 0;
+        for (size_t k = 0; k < o; k++) {
+            var_deg[i][k] = acirc_var_degree(c, c->outrefs[k], i);
+            if (i == 0 || var_deg[i][k] > var_dmax[i])
+                var_dmax[i] = var_deg[i][k];
+        }
+    }
+
     #pragma omp parallel for
     for (size_t i = 0; i < n; i++) {
         obf->xhat[i] = zim_malloc(2 * sizeof(encoding*));
@@ -73,13 +92,14 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
 
             obf->zhat[i][b] = zim_malloc(o * sizeof(encoding*));
             obf->what[i][b] = zim_malloc(o * sizeof(encoding*));
-            ul dmax = acirc_max_var_degree(c, i);
             for (size_t k = 0; k < o; k++) {
                 // create the zhat encodings for each output wire
-                ul d  = acirc_var_degree(c, c->outrefs[k], i);
                 obf_index *ix_z = obf_index_create(n);
-                IX_X(ix_z, i, b) = dmax - d;
-                IX_X(ix_z, i, 1-b) = dmax;
+                if (i == 0) {
+                    IX_Y(ix_z) = con_dmax - con_deg[k];
+                }
+                IX_X(ix_z, i, b)   = var_dmax[i] - var_deg[i][k];
+                IX_X(ix_z, i, 1-b) = var_dmax[i];
                 IX_Z(ix_z, i) = 1;
                 IX_W(ix_z, i) = 1;
                 obf->zhat[i][b][k] = encode(delta[i][b][k], gamma[i][b][k], ix_z, sp, rng);

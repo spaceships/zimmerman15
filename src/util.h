@@ -53,16 +53,16 @@ void print_progress (size_t cur, size_t total);
 
 #define ARRAY_ADD(ROP, XS, YS, N) ({    \
     size_t I;                           \
-    for (I = 0; I < N; I++) {           \
-        ROP[I] = XS[I] + YS[I];         \
+    for (I = 0; I < (N); I++) {         \
+        (ROP)[I] = (XS)[I] + (YS)[I];   \
     }                                   \
 })
 
 #define ARRAY_SUM(XS, N) ({     \
     size_t RES = 0;             \
     size_t I;                   \
-    for (I = 0; I < N; I++) {   \
-        RES += XS[i];           \
+    for (I = 0; I < (N); I++) { \
+        RES += (XS)[i];         \
     }                           \
     RES;                        \
 })
@@ -70,36 +70,45 @@ void print_progress (size_t cur, size_t total);
 #define IN_ARRAY(ELEM, XS, N) ({    \
     size_t I;                       \
     bool RES = false;               \
-    for (I = 0; I < N; I++) {       \
-        if (ELEM == XS[I]) {        \
-            RES = true;             \
+    for (I = 0; I < (N); I++) {     \
+        if ((ELEM) == (XS)[I]) {    \
+            (RES) = true;           \
             break;                  \
         }                           \
     }                               \
     RES;                            \
 }
 
-#define ANY_IN_ARRAY(XS, XLEN, YS, YLEN) ({ \
-    size_t I;                               \
-    bool RES = false;                       \
-    for (I = 0; I < XLEN; I++) {            \
-        if (in_array(XS[I], YS, YLEN)) {    \
-            RES = true;                     \
-            break;                          \
-        }                                   \
-    }                                       \
-    RES;                                    \
+#define ANY_IN_ARRAY(XS, XLEN, YS, YLEN) ({     \
+    size_t I;                                   \
+    int RES = 0;                                \
+    for (I = 0; I < (XLEN); I++) {              \
+        if (in_array((XS)[I], (YS), (YLEN))) {  \
+            RES = 1;                            \
+            break;                              \
+        }                                       \
+    }                                           \
+    RES;                                        \
 })
 
-#define ARRAY_EQ(XS, YS, N) ({   \
-    size_t I;                   \
-    bool RES = true;            \
-    for (I = 0; I < N; I++)     \
-        if (XS[I] != YS[I]) {   \
-            RES = false;        \
-            break;              \
-        }                       \
-    RES;                        \
+#define ARRAY_EQ(XS, YS, N) ({      \
+    size_t I;                       \
+    bool RES = true;                \
+    for (I = 0; I < (N); I++)       \
+        if ((XS)[I] != (YS)[I]) {   \
+            RES = false;            \
+            break;                  \
+        }                           \
+    RES;                            \
+})
+
+#define ARRAY_MAX(RES, XS, N) ({    \
+    (RES) = (XS)[0];                \
+    size_t I;                       \
+    for (I = 1; I < (N); I++)       \
+        if ((XS)[I] > RES)          \
+            (RES) = (XS)[I];        \
+    RES;                            \
 })
 
 #endif
