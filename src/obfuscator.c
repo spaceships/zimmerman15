@@ -73,14 +73,11 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
 
             obf->zhat[i][b] = zim_malloc(o * sizeof(encoding*));
             obf->what[i][b] = zim_malloc(o * sizeof(encoding*));
+            ul dmax = acirc_max_var_degree(c, i);
             for (size_t k = 0; k < o; k++) {
                 // create the zhat encodings for each output wire
-                ul d     = acirc_var_degree(c, c->outrefs[k], i);
-                ul dmax  = acirc_max_var_degree(c, i);
-                ul cd    = acirc_const_degree(c, c->outrefs[k]);
-                ul cdmax = acirc_max_const_degree(c);
+                ul d  = acirc_var_degree(c, c->outrefs[k], i);
                 obf_index *ix_z = obf_index_create(n);
-                IX_Y(ix_z) = cdmax - cd;
                 IX_X(ix_z, i, b) = dmax - d;
                 IX_X(ix_z, i, 1-b) = dmax;
                 IX_Z(ix_z, i) = 1;
