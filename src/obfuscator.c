@@ -81,7 +81,7 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
                 ul cdmax = acirc_max_const_degree(c);
                 obf_index *ix_z = obf_index_create(n);
                 IX_Y(ix_z) = cdmax - cd;
-                IX_X(ix_z, i, 1) = dmax - d;
+                IX_X(ix_z, i, b) = dmax - d;
                 IX_X(ix_z, i, 1-b) = dmax;
                 IX_Z(ix_z, i) = 1;
                 IX_W(ix_z, i) = 1;
