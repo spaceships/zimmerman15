@@ -24,6 +24,7 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
     mpz_t alpha [n];
     mpz_t gamma [n][2][o];
     mpz_t delta [n][2][o];
+    #pragma omp parallel for
     for (size_t i = 0; i < n; i++) {
         mpz_init(alpha[i]);
         mpz_randomm_inv_aes(alpha[i],    rng, get_moduli(sp)[1]);
@@ -37,6 +38,7 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
     }
 
     mpz_t beta [m];
+    #pragma omp parallel for
     for (size_t j = 0; j < m; j++) {
         mpz_init(beta[j]);
         mpz_randomm_inv_aes(beta[j], rng, get_moduli(sp)[1]);
@@ -52,15 +54,26 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
     ul con_dmax;
     ul var_deg [n][o];
     ul var_dmax [n];
+    #pragma omp parallel for
     for (size_t k = 0; k < o; k++) {
         con_deg[k] = acirc_const_degree(c, c->outrefs[k]);
+    }
+    for (size_t k = 0; k < o; k++) {
         if (k == 0 || con_deg[k] > con_dmax)
             con_dmax = con_deg[k];
     }
+    #pragma omp parallel for
     for (size_t i = 0; i < n; i++) {
         var_dmax[i] = 0;
+    }
+    #pragma omp parallel for schedule(dynamic,1) collapse(2)
+    for (size_t i = 0; i < n; i++) {
         for (size_t k = 0; k < o; k++) {
             var_deg[i][k] = acirc_var_degree(c, c->outrefs[k], i);
+        }
+    }
+    for (size_t i = 0; i < n; i++) {
+        for (size_t k = 0; k < o; k++) {
             if (i == 0 || var_deg[i][k] > var_dmax[i])
                 var_dmax[i] = var_deg[i][k];
         }
@@ -174,6 +187,7 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
     // cleanup
     mpz_clears(zero, one, NULL);
 
+    #pragma omp parallel for
     for (size_t i = 0; i < n; i++) {
         mpz_clear(alpha[i]);
         for (size_t b = 0; b <= 1; b++) {
@@ -182,8 +196,10 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
             }
         }
     }
+    #pragma omp parallel for
     for (size_t j = 0; j < m; j++)
         mpz_clear(beta[j]);
+    #pragma omp parallel for
     for (size_t k = 0; k < o; k++)
         mpz_clear(Cstar[k]);
 

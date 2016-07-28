@@ -218,10 +218,14 @@ void int_read (int *x, FILE *const fp) {
 
 void print_progress (size_t cur, size_t total)
 {
+    static int last_val = 0;
     double percentage = (double) cur / total;
     int val  = percentage * 100;
     int lpad = percentage * PBWIDTH;
     int rpad = PBWIDTH - lpad;
-    printf("\r%3d%% [%.*s%*s] %lu/%lu", val, lpad, PBSTR, rpad, "", cur, total);
-    fflush(stdout);
+    if (val != last_val) {
+        fprintf(stdout, "\r\t%3d%% [%.*s%*s] %lu/%lu", val, lpad, PBSTR, rpad, "", cur, total);
+        fflush(stdout);
+        last_val = val;
+    }
 }
