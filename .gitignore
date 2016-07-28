@@ -4,5 +4,6 @@ build
 clt13
 libacirc
 libaesrand
+libthreadpool
 src/*.o
 circuits/*.zim
