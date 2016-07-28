@@ -164,10 +164,10 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
         acirc_eval_mpz_mod(Cstar[k], c, c->outrefs[k], alpha, beta, get_moduli(sp)[1]);
 
         obf_index *ix_c = obf_index_create(n);
-        IX_Y(ix_c) = acirc_max_const_degree(c);
+        IX_Y(ix_c) = con_dmax; // acirc_max_const_degree(c);
 
         for (size_t i = 0; i < n; i++) {
-            ul d = acirc_max_var_degree(c, i);
+            ul d = var_dmax[i]; // acirc_max_var_degree(c, i);
             IX_X(ix_c, i, 0) = d;
             IX_X(ix_c, i, 1) = d;
             IX_Z(ix_c, i) = 1;
