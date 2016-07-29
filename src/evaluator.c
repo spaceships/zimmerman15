@@ -3,25 +3,47 @@
 #include "mmap.h"
 #include <threadpool.h>
 #include <assert.h>
+#include <pthread.h>
 
-typedef struct ref_list {
+typedef struct ref_list_node {
     acircref ref;
-    struct ref_list *next;
+    struct ref_list_node *next;
+} ref_list_node;
+
+typedef struct {
+    ref_list_node *first;
+    pthread_mutex_t *lock;
 } ref_list;
 
-ref_list* ref_list_create (acircref ref);
+ref_list* ref_list_create ();
 void ref_list_destroy (ref_list *list);
 void ref_list_push (ref_list *list, acircref ref);
-int ref_list_pop (ref_list **list, acircref ref);
+int ref_list_pop (ref_list *list, acircref ref);
 
-void get_dependents (ref_list** deps, acirc *c);
-
-void obf_eval (int *known, int *mine, encoding **cache, acircref ref,
-               obfuscation *obf, acirc *c, int *inputs);
+void get_dependents (ref_list **deps, acirc *c);
 
 // statefully raise encodings to the union of their indices
 static void raise_encodings (encoding *x, encoding *y, obfuscation *obf);
 static void raise_encoding  (encoding *x, obf_index *target, obfuscation *obf);
+
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct work_args {
+    acircref ref;
+    acirc *c;
+    int *inputs;
+    obfuscation *obf;
+    int *known;
+    int *mine;
+    int *ready;
+    encoding **cache;
+    ref_list **dependents;
+    threadpool *pool;
+} work_args;
+
+void obf_eval_ref (void* void_args);
+
+////////////////////////////////////////////////////////////////////////////////
 
 void evaluate (int *rop, acirc *c, int *inputs, obfuscation *obf)
 {
@@ -36,9 +58,14 @@ void evaluate (int *rop, acirc *c, int *inputs, obfuscation *obf)
     }
 
     ref_list* dependents [c->nrefs];
-    for (size_t i = 0; i < c->nrefs; i++)
+    int ready [c->nrefs];
+    for (size_t i = 0; i < c->nrefs; i++) {
         dependents[i] = NULL;
+        ready[i] = 0;
+    }
     get_dependents(dependents, c);
+
+    threadpool *pool = threadpool_create(THREADPOOL_NCORES);
 
     for (acircref ref = 0; ref < c->nrefs; ref++) {
         if (dependents[ref] == NULL) {
@@ -49,11 +76,11 @@ void evaluate (int *rop, acirc *c, int *inputs, obfuscation *obf)
                 // not to worry: it will be triggered by its children.
                 continue;
             }
-            obf_eval(known, mine, cache, ref, obf, c, inputs);
+            work_args args = {ref, c, inputs, obf, known, mine, ready, cache, dependents, pool};
+            threadpool_add_job(pool, obf_eval_ref, &args);
         }
     }
 
-    // threadpool *pool = threadpool_create(THREADPOOL_NCORES);
 
 
     for (size_t i = 0; i < c->nrefs; i++)
@@ -193,63 +220,82 @@ static void raise_encoding (encoding *x, obf_index *target, obfuscation *obf)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-ref_list* ref_list_create (acircref ref)
+ref_list* ref_list_create ()
 {
     ref_list *list = zim_malloc(sizeof(ref_list));
-    list->ref  = ref;
-    list->next = NULL;
+    list->first = NULL;
+    list->lock = zim_malloc(sizeof(pthread_mutex_t));
+    pthread_mutex_init(list->lock, NULL);
     return list;
 }
 
 void ref_list_destroy (ref_list *list)
 {
-    ref_list *cur = list;
+    ref_list_node *cur = list->first;
     while (cur != NULL) {
-        ref_list *tmp = cur;
+        ref_list_node *tmp = cur;
         cur = cur->next;
         free(tmp);
     }
+    pthread_mutex_destroy(list->lock);
+    free(list->lock);
+    free(list);
+}
+
+static ref_list_node* ref_list_node_create (acircref ref)
+{
+    ref_list_node *new = zim_malloc(sizeof(ref_list_node));
+    new->next = NULL;
+    new->ref  = ref;
+    return new;
 }
 
 void ref_list_push (ref_list *list, acircref ref)
 {
-    ref_list *cur = list;
+    ref_list_node *cur = list->first;
+    if (cur == NULL) {
+        list->first = ref_list_node_create(ref);
+        return;
+    }
     while (1) {
         if (cur->ref == ref) {
             return;
         }
         if (cur->next == NULL) {
-            ref_list *new = zim_malloc(sizeof(ref_list));
-            new->next = NULL;
-            new->ref  = ref;
-            cur->next = new;
+            cur->next = ref_list_node_create(ref);
             return;
         }
         cur = cur->next;
     }
 }
 
-int ref_list_pop (ref_list **list, acircref ref)
+int ref_list_pop (ref_list *list, acircref ref)
 {
-    if ((*list)->ref == ref) {
-        ref_list *tmp = *list;
-        *list = (*list)->next;
+    int ret = 0;
+    pthread_mutex_lock(list->lock);
+    if (list->first != NULL && list->first->ref == ref) {
+        ref_list_node *tmp = list->first;
+        list->first = tmp->next;
         free(tmp);
-        return 1;
+        ret = 1;
+        goto done;
     }
-    ref_list *cur = *list;
+    ref_list_node *cur = list->first;
     while (cur != NULL) {
         if (cur->next != NULL && cur->next->ref == ref) {
-            ref_list *tmp = cur->next;
+            ref_list_node *tmp = cur->next;
             cur->next = cur->next->next;
             free(tmp);
-            return 1;
+            ret = 1;
+            goto done;
         }
     }
-    return 0;
+done:
+    pthread_mutex_unlock(list->lock);
+    return ret;
 }
 
-void get_dependents (ref_list** deps, acirc *c)
+void get_dependents (ref_list **deps, acirc *c)
 {
     for (acircref ref = 0; ref < c->nrefs; ref++) {
         acirc_operation op = c->ops[ref];
@@ -261,23 +307,31 @@ void get_dependents (ref_list** deps, acirc *c)
         acircref x = c->args[ref][0];
         acircref y = c->args[ref][0];
 
-        if (deps[x] == NULL) {
-            deps[x] = ref_list_create(ref);
-        } else {
-            ref_list_push(deps[x], ref);
-        }
+        if (deps[x] == NULL)
+            deps[x] = ref_list_create();
+        if (deps[y] == NULL)
+            deps[y] = ref_list_create();
 
-        if (deps[y] == NULL) {
-            deps[y] = ref_list_create(ref);
-        } else {
-            ref_list_push(deps[y], ref);
-        }
+        ref_list_push(deps[x], ref);
+        ref_list_push(deps[y], ref);
     }
 }
 
-void obf_eval (int *known, int *mine, encoding **cache, acircref ref,
-               obfuscation *obf, acirc *c, int *inputs)
+void obf_eval_ref(void* void_args)
 {
+    work_args argstruct = *(work_args*)void_args;
+
+    acircref ref     = argstruct.ref;
+    acirc *c         = argstruct.c;
+    int *inputs      = argstruct.inputs;
+    obfuscation *obf = argstruct.obf;
+    int *known       = argstruct.known;
+    int *mine        = argstruct.mine;
+    int *ready       = argstruct.ready;
+    encoding **cache = argstruct.cache;
+    ref_list **deps  = argstruct.dependents;
+    threadpool *pool = argstruct.pool;
+
     if (known[ref])
         return;
 
@@ -331,4 +385,16 @@ void obf_eval (int *known, int *mine, encoding **cache, acircref ref,
 
     known[ref] = 1;
     cache[ref] = res;
+
+    ref_list_node *cur = deps[ref]->first;
+    while (cur != NULL) {
+        pthread_mutex_lock(deps[cur->ref]->lock);
+        ready[cur->ref] += 1;
+        if (ready[cur->ref] == 2) {
+            work_args newargs = argstruct;
+            newargs.ref = cur->ref;
+            threadpool_add_job(pool, obf_eval_ref, (void*)&newargs);
+        }
+        pthread_mutex_unlock(deps[cur->ref]->lock);
+    }
 }

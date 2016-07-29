@@ -20,6 +20,7 @@ build () {
         cd $path; git pull origin master; cd ..;
     fi
     cd $1
+        mkdir -p build/autoconf
         autoreconf -i
         ./configure --prefix=$builddir
         make

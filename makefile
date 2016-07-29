@@ -4,7 +4,7 @@ CFLAGS = -Wall -Wno-unused-result -Wno-pointer-sign -Wno-switch \
 		  -fopenmp
 
 IFLAGS = -Isrc -Ibuild/include
-LFLAGS = -lacirc -lgmp -lm -lclt13 -laesrand -Lbuild/lib -Wl,-rpath -Wl,build/lib
+LFLAGS = -lacirc -lgmp -lm -lclt13 -laesrand -lthreadpool -Lbuild/lib -Wl,-rpath -Wl,build/lib
 
 SRCS   = $(wildcard src/*.c)
 OBJS   = $(addsuffix .o, $(basename $(SRCS)))
@@ -25,6 +25,7 @@ deepclean: clean
 	$(RM) -r libaesrand
 	$(RM) -r clt13
 	$(RM) -r libacirc
+	$(RM) -r libthreadpool
 	$(RM) -r build
 
 clean:
