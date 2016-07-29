@@ -156,13 +156,24 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng)
     print_progress(encode_ct++, encode_n);
     obf_index_destroy(ix_y);
 
+    // use memoized circuit evaluation instead of re-eval each time!
+    bool  known [c->nrefs];
+    mpz_t cache [c->nrefs];
+    for (size_t i = 0; i < c->nrefs; i++)
+        known[i] = false;
     mpz_t Cstar [o];
     obf->Chatstar = zim_malloc(o * sizeof(encoding*));
-    #pragma omp parallel for
     for (size_t k = 0; k < o; k++) {
         mpz_init(Cstar[k]);
-        acirc_eval_mpz_mod(Cstar[k], c, c->outrefs[k], alpha, beta, get_moduli(sp)[1]);
+        acirc_eval_mpz_mod_memo(Cstar[k], c, c->outrefs[k], alpha, beta, get_moduli(sp)[1], known, cache);
+    }
+    for (size_t i = 0; i < c->nrefs; i++) {
+        if (known[i])
+            mpz_clear(cache[i]);
+    }
 
+    #pragma omp parallel for
+    for (size_t k = 0; k < o; k++) {
         obf_index *ix_c = obf_index_create(n);
         IX_Y(ix_c) = con_dmax; // acirc_max_const_degree(c);
 
