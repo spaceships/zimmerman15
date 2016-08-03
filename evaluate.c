@@ -72,9 +72,11 @@ int main (int argc, char **argv)
 
     printf("evaluating...\n");
     int res[c->noutputs];
+    int eval_ok = 1;
     for (int i = 0; i < c->ntests; i++) {
         evaluate(res, c, c->testinps[i], obf);
         bool test_ok = ARRAY_EQ(res, c->testouts[i], c->noutputs);
+        eval_ok = eval_ok && test_ok;
         if (!test_ok)
             printf("\033[1;41m");
         printf("test %d input=", i);
@@ -90,4 +92,6 @@ int main (int argc, char **argv)
 
     acirc_destroy(c);
     obfuscation_destroy(obf);
+
+    return !eval_ok;
 }

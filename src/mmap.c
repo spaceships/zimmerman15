@@ -27,7 +27,8 @@ secret_params* secret_params_create (acirc *c, size_t lambda, aes_randstate_t rn
 
     else {
         sp->clt_st = zim_malloc(sizeof(clt_state));
-        int flags = CLT_FLAG_DEFAULT | CLT_FLAG_VERBOSE;
+        int flags = CLT_FLAG_VERBOSE;
+        // int flags = CLT_FLAG_VERBOSE | CLT_FLAG_OPT_COMPOSITE_PS;
         clt_state_init(sp->clt_st, kappa, lambda, sp->toplevel->nzs,
                        (const int*) sp->toplevel->pows, flags, rng);
     }
