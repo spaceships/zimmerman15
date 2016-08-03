@@ -38,19 +38,10 @@ typedef struct work_args {
     encoding **cache;
     ref_list **dependents;
     threadpool *pool;
+    int *rop;
 } work_args;
 
-typedef struct finish_args {
-    acirc *c;
-    int *inputs;
-    obfuscation *obf;
-    encoding **cache;
-    size_t k;
-    int *rop;
-} finish_args;
-
 void obf_eval_ref (void* wargs);
-void obf_finish (void* fargs);
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -74,9 +65,7 @@ void evaluate (int *rop, acirc *c, int *inputs, obfuscation *obf)
     }
     get_dependents(dependents, c);
 
-    threadpool *pool = threadpool_create(THREADPOOL_NCORES);
-    pthread_mutex_t deps_lock;
-    pthread_mutex_init(&deps_lock, NULL);
+    threadpool *pool = threadpool_create(NCORES);
 
     for (acircref ref = 0; ref < c->nrefs; ref++) {
         acirc_operation op = c->ops[ref];
@@ -94,23 +83,10 @@ void evaluate (int *rop, acirc *c, int *inputs, obfuscation *obf)
         args->cache = cache;
         args->dependents = dependents;
         args->pool = pool;
+        args->rop = rop;
         threadpool_add_job(pool, obf_eval_ref, args);
     }
 
-    pthread_mutex_destroy(&deps_lock);
-    threadpool_destroy(pool); // wait for everyone to finish, could replace with a barrier
-
-    pool = threadpool_create(THREADPOOL_NCORES);
-    for (size_t k = 0; k < obf->noutputs; k++) {
-        finish_args *fargs = zim_malloc(sizeof(finish_args));
-        fargs->c = c;
-        fargs->inputs = inputs;
-        fargs->obf = obf;
-        fargs->cache = cache;
-        fargs->k = k;
-        fargs->rop = rop;
-        threadpool_add_job(pool, obf_finish, fargs);
-    }
     threadpool_destroy(pool);
 
     for (size_t i = 0; i < c->nrefs; i++) {
@@ -226,6 +202,7 @@ void obf_eval_ref(void* wargs)
     encoding **cache = ((work_args*)wargs)->cache;
     ref_list **deps  = ((work_args*)wargs)->dependents;
     threadpool *pool = ((work_args*)wargs)->pool;
+    int *rop         = ((work_args*)wargs)->rop;
 
     acirc_operation op = c->ops[ref];
     acircref *args     = c->args[ref];
@@ -292,50 +269,45 @@ void obf_eval_ref(void* wargs)
         cur = cur->next;
     }
 
+    int k = -1;
+    for (size_t i = 0; i < c->noutputs; i++) {
+        if (ref == c->outrefs[i]) {
+            k = i;
+            break;
+        }
+    }
+
+    if (k >= 0) { // this ref is an output bit
+        encoding *outwire = encoding_copy(res);
+        encoding *tmp     = encoding_copy(obf->Chatstar[k]);
+
+        for (size_t i = 0; i < c->ninputs; i++) {
+            encoding_mul(outwire, outwire, obf->zhat[i][inputs[i]][k], obf->pp);
+        }
+
+        for (size_t i = 0; i < c->ninputs; i++) {
+            encoding_mul(tmp, tmp, obf->what[i][inputs[i]][k], obf->pp);
+        }
+
+        if (!obf_index_eq(obf->pp->toplevel, tmp->index)) {
+            printf("\n[evaluate] tmp did not reach toplevel\n");
+            obf_index_print(tmp->index);
+            obf_index_print(obf->pp->toplevel);
+            exit(EXIT_FAILURE);
+        }
+        if (!obf_index_eq(obf->pp->toplevel, outwire->index)) {
+            printf("\n[evaluate] outwire did not reach toplevel\n");
+            obf_index_print(outwire->index);
+            obf_index_print(obf->pp->toplevel);
+            exit(EXIT_FAILURE);
+        }
+
+        encoding_sub(outwire, outwire, tmp, obf->pp);
+        rop[k] = !encoding_is_zero(outwire, obf->pp);
+
+        encoding_destroy(outwire);
+        encoding_destroy(tmp);
+    }
+
     free((work_args*)wargs);
-}
-
-
-void obf_finish (void* fargs)
-{
-    acirc *c         = ((finish_args*)fargs)->c;
-    int *inputs      = ((finish_args*)fargs)->inputs;
-    obfuscation *obf = ((finish_args*)fargs)->obf;
-    encoding **cache = ((finish_args*)fargs)->cache;
-    size_t k         = ((finish_args*)fargs)->k;
-    int *rop         = ((finish_args*)fargs)->rop;
-
-    acircref root = c->outrefs[k];
-
-    encoding *outwire = encoding_copy(cache[root]);
-    encoding *tmp     = encoding_copy(obf->Chatstar[k]);
-
-    for (size_t i = 0; i < c->ninputs; i++) {
-        encoding_mul(outwire, outwire, obf->zhat[i][inputs[i]][k], obf->pp);
-    }
-
-    for (size_t i = 0; i < c->ninputs; i++) {
-        encoding_mul(tmp, tmp, obf->what[i][inputs[i]][k], obf->pp);
-    }
-
-    if (!obf_index_eq(obf->pp->toplevel, tmp->index)) {
-        printf("\n[evaluate] tmp did not reach toplevel\n");
-        obf_index_print(tmp->index);
-        obf_index_print(obf->pp->toplevel);
-        exit(EXIT_FAILURE);
-    }
-    if (!obf_index_eq(obf->pp->toplevel, outwire->index)) {
-        printf("\n[evaluate] outwire did not reach toplevel\n");
-        obf_index_print(outwire->index);
-        obf_index_print(obf->pp->toplevel);
-        exit(EXIT_FAILURE);
-    }
-
-    encoding_sub(outwire, outwire, tmp, obf->pp);
-    rop[k] = !encoding_is_zero(outwire, obf->pp);
-
-    encoding_destroy(outwire);
-    encoding_destroy(tmp);
-
-    free((finish_args*)fargs);
 }

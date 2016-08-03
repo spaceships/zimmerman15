@@ -69,10 +69,10 @@ void print_progress (size_t cur, size_t total);
 
 #define IN_ARRAY(ELEM, XS, N) ({    \
     size_t I;                       \
-    bool RES = false;               \
+    size_t RES = -1;                \
     for (I = 0; I < (N); I++) {     \
         if ((ELEM) == (XS)[I]) {    \
-            (RES) = true;           \
+            RES = I;                \
             break;                  \
         }                           \
     }                               \
