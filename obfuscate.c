@@ -15,7 +15,7 @@ void usage()
     printf("\t-l\tScurity parameter (default=10).\n");
     printf("\t-f\tUse fake multilinear map for testing.\n");
     printf("\t-o\tSpecify obfuscation output file.\n");
-    printf("\t-p\tSpecify how many powers of 2 to to give out for u_i's and v.\n");
+    printf("\t-p\tSpecify how many powers of 2 to to give out for u_i's and v (default=8).\n");
     puts("");
 }
 
