@@ -7,29 +7,31 @@
 #include <clt13.h>
 #include <gmp.h>
 
-#define NUM_ENCODINGS(c) ( \
-        (c)->ninputs * 2 * 2 + \
-        (c)->ninputs * 2 * (c)->noutputs * 2 + \
-        (c)->nconsts + \
-        1 + \
-        (c)->noutputs \
+#define NUM_ENCODINGS(C, NPOWERS) ( \
+        (C)->ninputs * 2 + \
+        (C)->ninputs * 2 * (NPOWERS) + \
+        (C)->ninputs * 2 * (C)->noutputs * 2 + \
+        (C)->nconsts + \
+        (NPOWERS) + \
+        (C)->noutputs \
     )
 
 typedef struct {
     size_t ninputs;         // n
     size_t nconsts;         // m
     size_t noutputs;        // o
+    size_t npowers;         // how many powers of 2 u's and v's we give out
     public_params *pp;
     encoding ***xhat;       // [n][2]
-    encoding ***uhat;       // [n][2]
+    encoding ****uhat;      // [n][2][npowers]
     encoding ****zhat;      // [n][2][o]
     encoding ****what;      // [n][2][o]
     encoding **yhat;        // [m]
-    encoding *vhat;         // [1]
+    encoding **vhat;        // [npowers]
     encoding **Chatstar;    // [o]
 } obfuscation;
 
-obfuscation* obfuscate (acirc *c, secret_params *sp, aes_randstate_t rng);
+obfuscation* obfuscate (acirc *c, secret_params *sp, size_t npowers, aes_randstate_t rng);
 
 void obfuscation_destroy (obfuscation *obf);
 

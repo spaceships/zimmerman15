@@ -14,6 +14,7 @@ void usage()
     printf("\t-l\tScurity parameter (default=10).\n");
     printf("\t-f\tUse fake multilinear map for testing.\n");
     printf("\t-o\tSpecify obfuscation output file.\n");
+    printf("\t-p\tSpecify how many powers of 2 to to give out for u_i's and v.\n");
     puts("");
 }
 
@@ -21,10 +22,11 @@ int main (int argc, char **argv)
 {
     int fake = 0;
     ul lambda = 10;
+    ul npowers = 8;
     int output_filename_set = 0;
     char output_filename [1024];
     int arg;
-    while ((arg = getopt(argc, argv, "fl:o:")) != -1) {
+    while ((arg = getopt(argc, argv, "fl:o:p:")) != -1) {
         if (arg == 'f') {
             fake = 1;
         }
@@ -34,6 +36,9 @@ int main (int argc, char **argv)
         else if (arg == 'o') {
             strcpy(output_filename, optarg);
             output_filename_set = 1;
+        }
+        else if (arg == 'p') {
+            npowers = atoi(optarg);
         }
         else {
             usage();
@@ -65,11 +70,11 @@ int main (int argc, char **argv)
     acirc *c = acirc_from_file(acirc_filename);
     size_t delta = acirc_delta(c);
 
-    printf("circuit: ninputs=%lu noutputs=%lu nconsts=%lu ngates=%lu nrefs=%lu delta=%lu\n",
+    printf("// circuit: ninputs=%lu noutputs=%lu nconsts=%lu ngates=%lu nrefs=%lu delta=%lu\n",
            c->ninputs, c->noutputs, c->nconsts, c->ngates, c->nrefs, delta);
 
-    printf("obfuscation: fake=%d lambda=%lu kappa=%lu\n",
-           fake, lambda, delta + 2*c->ninputs);
+    printf("// obfuscation: fake=%d lambda=%lu kappa=%lu npowers=%lu\n",
+           fake, lambda, delta + 2*c->ninputs, npowers);
 
     aes_randstate_t rng;
     aes_randinit(rng);
@@ -77,7 +82,7 @@ int main (int argc, char **argv)
     puts("initializing secret params...");
     secret_params *sp = secret_params_create(c, lambda, rng, fake);
     puts("obfuscating...");
-    obfuscation *obf = obfuscate(c, sp, rng);
+    obfuscation *obf = obfuscate(c, sp, npowers, rng);
 
     if (!output_filename_set) {
         char prefix[1024];

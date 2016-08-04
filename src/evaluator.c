@@ -220,16 +220,30 @@ static void raise_encodings (encoding *x, encoding *y, obfuscation *obf)
 
 static void raise_encoding (encoding *x, obf_index *target, obfuscation *obf)
 {
-    obf_index *diff = obf_index_difference(target, x->index);
+    obf_index *diff_ix = obf_index_difference(target, x->index);
     for (size_t i = 0; i < obf->ninputs; i++) {
         for (size_t b = 0; b <= 1; b++) {
-            for (size_t p = 0; p < IX_X(diff, i, b); p++)
-                encoding_mul(x, x, obf->uhat[i][b], obf->pp);
+            size_t diff = IX_X(diff_ix, i, b);
+            while (diff > 0) {
+                // want to find the largest power we obfuscated to multiply by
+                size_t p = 0;
+                while (((1 << (p+1)) <= diff) && ((p+1) < obf->npowers))
+                    p++;
+                encoding_mul(x, x, obf->uhat[i][b][p], obf->pp);
+                diff -= (1 << p);
+            }
         }
     }
-    for (size_t p = 0; p < IX_Y(diff); p++)
-        encoding_mul(x, x, obf->vhat, obf->pp);
-    obf_index_destroy(diff);
+    size_t diff = IX_Y(diff_ix);
+    printf("diff=%lu\n", diff);
+    while (diff > 0) {
+        size_t p = 0;
+        while (((1 << (p+1)) <= diff) && ((p+1) < obf->npowers))
+            p++;
+        encoding_mul(x, x, obf->vhat[p], obf->pp);
+        diff -= (1 << p);
+    }
+    obf_index_destroy(diff_ix);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
