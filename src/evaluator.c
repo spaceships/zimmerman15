@@ -235,7 +235,6 @@ static void raise_encoding (encoding *x, obf_index *target, obfuscation *obf)
         }
     }
     size_t diff = IX_Y(diff_ix);
-    printf("diff=%lu\n", diff);
     while (diff > 0) {
         size_t p = 0;
         while (((1 << (p+1)) <= diff) && ((p+1) < obf->npowers))
