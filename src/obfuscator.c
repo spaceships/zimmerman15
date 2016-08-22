@@ -47,7 +47,7 @@ obfuscation* obfuscate (acirc *c, secret_params *sp, size_t npowers, aes_randsta
     }
 
     obf->xhat = zim_malloc(n * sizeof(encoding**));
-    obf->uhat = zim_malloc(n * sizeof(encoding**));
+    obf->uhat = zim_malloc(n * sizeof(encoding***));
     obf->zhat = zim_malloc(n * sizeof(encoding***));
     obf->what = zim_malloc(n * sizeof(encoding***));
 

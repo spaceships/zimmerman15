@@ -71,6 +71,8 @@ int main (int argc, char **argv)
     obfuscation *obf = obfuscation_read(obf_fp);
     fclose(obf_fp);
 
+    printf("// fake=%d, npowers=%lu\n", obf->pp->fake, obf->npowers);
+
     printf("evaluating...\n");
     int res[c->noutputs];
     int eval_ok = 1;

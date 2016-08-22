@@ -4,6 +4,7 @@
 #include <threadpool.h>
 #include <assert.h>
 #include <pthread.h>
+#include <string.h>
 
 typedef struct ref_list_node {
     acircref ref;
@@ -167,13 +168,15 @@ void obf_eval_worker(void* wargs)
         pthread_mutex_lock(deps[cur->ref]->lock);
         ready[cur->ref] += 1; // ready[ref] indicates how many of ref's children are evaluated
         if (ready[cur->ref] == 2) {
+            pthread_mutex_unlock(deps[cur->ref]->lock);
             work_args *newargs = zim_malloc(sizeof(work_args));
             *newargs = *(work_args*)wargs;
             newargs->ref = cur->ref;
             threadpool_add_job(pool, obf_eval_worker, (void*)newargs);
+        } else {
+            pthread_mutex_unlock(deps[cur->ref]->lock);
+            cur = cur->next;
         }
-        pthread_mutex_unlock(deps[cur->ref]->lock);
-        cur = cur->next;
     }
     free((work_args*)wargs);
 
@@ -187,6 +190,7 @@ void obf_eval_worker(void* wargs)
             break;
         }
     }
+
     if (ref_is_output) {
         encoding *outwire = encoding_copy(res);
         encoding *tmp     = encoding_copy(obf->Chatstar[k]);
@@ -286,9 +290,6 @@ void ref_list_push (ref_list *list, acircref ref)
         return;
     }
     while (1) {
-        if (cur->ref == ref) {
-            return;
-        }
         if (cur->next == NULL) {
             cur->next = ref_list_node_create(ref);
             return;

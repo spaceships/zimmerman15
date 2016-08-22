@@ -17,14 +17,18 @@ double current_time(void) {
 
 void array_printstring(int *xs, size_t n)
 {
-    for (int i = 0; i < n; i++)
+    for (int i = 0; i < n; i++) {
+        assert(xs[i] == 0 || xs[i] == 1);
         printf("%d", xs[i] == 1);
+    }
 }
 
 void array_printstring_rev(int *xs, size_t n)
 {
-    for (int i = n-1; i >= 0; i--)
+    for (int i = n-1; i >= 0; i--) {
+        assert(xs[i] == 0 || xs[i] == 1);
         printf("%d", xs[i] == 1);
+    }
 }
 
 void array_print(int *xs, size_t len) {
