@@ -3,6 +3,7 @@
 #include "util.h"
 #include <assert.h>
 #include <stdio.h>
+#include <threadpool.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 // parameters
@@ -31,7 +32,7 @@ secret_params* secret_params_create (acirc *c, size_t lambda, aes_randstate_t rn
         // int flags = CLT_FLAG_VERBOSE | CLT_FLAG_SEC_IMPROVED_BKZ | CLT_FLAG_SEC_CONSERVATIVE;
         // int flags = CLT_FLAG_VERBOSE | CLT_FLAG_OPT_COMPOSITE_PS;
         clt_state_init(sp->clt_st, kappa, lambda, sp->toplevel->nzs,
-                       (const int*) sp->toplevel->pows, flags, rng);
+                       (const int*) sp->toplevel->pows, NCORES, flags, rng);
     }
 
     return sp;
@@ -134,7 +135,7 @@ encoding* encode (mpz_t inp0, mpz_t inp1, const obf_index *ix, secret_params *sp
         mpz_t *inps = mpz_vect_create(2);
         mpz_set(inps[0], inp0);
         mpz_set(inps[1], inp1);
-        clt_encode(x->clt, sp->clt_st, NSLOTS, inps, (const int*) ix->pows, rng);
+        clt_encode(x->clt, sp->clt_st, NSLOTS, inps, (const int*) ix->pows);
         mpz_vect_destroy(inps, 2);
     }
 
