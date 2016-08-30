@@ -50,8 +50,6 @@ void print_progress (size_t cur, size_t total);
 #define GET_NEWLINE(fp) fscanf(fp, "\n")
 #define PUT_SPACE(fp) (!(fprintf(fp, " ") > 0))
 #define GET_SPACE(fp) fscanf(fp, " ")
-/* #define PUT_SPACE(fp)   assert(fputc(' ', (fp)) != EOF); */
-/* #define GET_SPACE(fp)   assert(fgetc(fp) == ' '); */
 
 #define ARRAY_ADD(ROP, XS, YS, N) ({    \
     size_t I;                           \

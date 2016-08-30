@@ -16,6 +16,7 @@ typedef struct {
 
 typedef struct {
     obf_index *toplevel;
+    bool toplevel_local;
     mmap_pp *pp;
 } public_params;
 
@@ -30,7 +31,6 @@ mpz_t* get_moduli (const mmap_vtable *mmap, secret_params *sp);
 
 public_params* public_params_create (const mmap_vtable *mmap, secret_params *sp);
 void public_params_destroy (public_params *pp);
-int  public_params_eq (public_params *pp1, public_params *pp2);
 
 encoding* encode (const mmap_vtable *mmap, mpz_t inp0, mpz_t inp2, const obf_index *ix, secret_params *sp);
 
@@ -40,7 +40,6 @@ void encoding_destroy (const mmap_vtable *mmap, encoding *x);
 void encoding_mul (const mmap_vtable *mmap, encoding *rop, encoding *x, encoding *y, public_params *p);
 void encoding_add (const mmap_vtable *mmap, encoding *rop, encoding *x, encoding *y, public_params *p);
 void encoding_sub (const mmap_vtable *mmap, encoding *rop, encoding *x, encoding *y, public_params *p);
-int encoding_eq (encoding *x, encoding *y);
 int encoding_is_zero (const mmap_vtable *mmap, encoding *x, public_params *p);
 
 public_params* public_params_read (const mmap_vtable *mmap, FILE *fp);

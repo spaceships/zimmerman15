@@ -53,31 +53,17 @@ mpz_t * get_moduli (const mmap_vtable *mmap, secret_params *sp)
 public_params* public_params_create (const mmap_vtable *mmap, secret_params *sp)
 {
     public_params *pp = zim_malloc(sizeof(public_params));
-
     pp->toplevel = sp->toplevel;
+    pp->toplevel_local = false;
     pp->pp = mmap->sk->pp(sp->sk);
-
     return pp;
 }
 
 void public_params_destroy (public_params *pp)
 {
-    /* if (pp->toplevel) */
-    /*     obf_index_destroy(pp->toplevel); */
+    if (pp->toplevel_local)
+        obf_index_destroy(pp->toplevel);
     free(pp);
-}
-
-int public_params_eq (public_params *pp1, public_params *pp2)
-{
-    assert(obf_index_eq(pp1->toplevel, pp2->toplevel));
-    /* if (pp1->fake) { */
-    /*     assert(mpz_vect_eq(pp1->moduli, pp2->moduli, NSLOTS)); */
-    /* } else { */
-    /*     assert(mpz_eq(pp1->clt_pp->x0,  pp2->clt_pp->x0)); */
-    /*     assert(mpz_eq(pp1->clt_pp->pzt, pp2->clt_pp->pzt)); */
-    /*     assert(pp1->clt_pp->nu == pp1->clt_pp->nu); */
-    /* } */
-    return 1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,21 +132,6 @@ void encoding_sub(const mmap_vtable *mmap, encoding *rop, encoding *x, encoding 
     mmap->enc->sub(&rop->enc, p->pp, &x->enc, &y->enc);
 }
 
-int encoding_eq (encoding *x, encoding *y)
-{
-    if (!obf_index_eq(x->index, y->index))
-        return 0;
-    /* if (x->fake) { */
-    /*     for (int i = 0; i < NSLOTS; i++) */
-    /*         if (mpz_cmp(x->slots[i], y->slots[i]) != 0) */
-    /*             return 0; */
-    /* } else { */
-    /*     if (mpz_cmp(x->clt, y->clt) != 0) */
-    /*         return 0; */
-    /* } */
-    return 1;
-}
-
 int encoding_is_zero (const mmap_vtable *mmap, encoding *x, public_params *p)
 {
     if(!obf_index_eq(x->index, p->toplevel)) {
@@ -180,8 +151,9 @@ public_params* public_params_read (const mmap_vtable *mmap, FILE *fp)
 {
     public_params *const pp = zim_malloc(sizeof(public_params));
     pp->toplevel = zim_malloc(sizeof(obf_index));
+    pp->toplevel_local = true;
     obf_index_read(pp->toplevel, fp);
-    GET_NEWLINE(fp);
+    (void) GET_NEWLINE(fp);
     pp->pp = malloc(mmap->pp->size);
     mmap->pp->fread(pp->pp, fp);
     return pp;
@@ -190,7 +162,7 @@ public_params* public_params_read (const mmap_vtable *mmap, FILE *fp)
 void public_params_write (const mmap_vtable *mmap, FILE *const fp, public_params *pp)
 {
     obf_index_write(fp, pp->toplevel);
-    PUT_NEWLINE(fp);
+    (void) PUT_NEWLINE(fp);
     mmap->pp->fwrite(pp->pp, fp);
 }
 
@@ -205,7 +177,7 @@ encoding* encoding_read (const mmap_vtable *mmap, public_params *pp, FILE *fp)
     encoding *x = zim_malloc(sizeof(encoding));
     x->index = zim_malloc(sizeof(obf_index));
     obf_index_read(x->index, fp);
-    GET_SPACE(fp);
+    (void) GET_SPACE(fp);
     mmap->enc->init(&x->enc, pp->pp);
     mmap->enc->fread(&x->enc, fp);
     return x;
@@ -214,7 +186,7 @@ encoding* encoding_read (const mmap_vtable *mmap, public_params *pp, FILE *fp)
 void encoding_write (const mmap_vtable *mmap, FILE *fp, encoding *x)
 {
     obf_index_write(fp, x->index);
-    PUT_SPACE(fp);
+    (void) PUT_SPACE(fp);
     mmap->enc->fwrite(&x->enc, fp);
 }
 

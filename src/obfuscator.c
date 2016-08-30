@@ -1,7 +1,6 @@
 #include "obfuscator.h"
 
 #include <assert.h>
-#include <omp.h>
 
 obfuscation* obfuscate (const mmap_vtable *mmap, acirc *c, secret_params *sp, size_t npowers, aes_randstate_t rng)
 {

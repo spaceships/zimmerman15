@@ -118,7 +118,7 @@ obf_index* obf_index_create_toplevel (acirc *c)
 {
     obf_index *ix = obf_index_create(c->ninputs);
     IX_Y(ix) = acirc_max_const_degree(c);
-    #pragma omp parallel for
+#pragma omp parallel for
     for (size_t i = 0; i < ix->n; i++) {
         size_t d = acirc_max_var_degree(c, i);
         IX_X(ix, i, 0) = d;
