@@ -38,18 +38,20 @@ void* zim_calloc  (size_t nmemb, size_t size);
 void* zim_malloc  (size_t size);
 void* zim_realloc (void *ptr, size_t size);
 
-void ulong_read  (unsigned long *x, FILE *const fp);
-void ulong_write (FILE *const fp, unsigned long x);
+int ulong_read  (unsigned long *x, FILE *const fp);
+int ulong_write (FILE *const fp, unsigned long x);
 
 void int_read  (int *x, FILE *const fp);
 void int_write (FILE *const fp, int x);
 
 void print_progress (size_t cur, size_t total);
 
-#define PUT_NEWLINE(fp) assert(fputc('\n', (fp)) != EOF);
-#define GET_NEWLINE(fp) assert(fgetc(fp) == '\n');
-#define PUT_SPACE(fp)   assert(fputc(' ', (fp)) != EOF);
-#define GET_SPACE(fp)   assert(fgetc(fp) == ' ');
+#define PUT_NEWLINE(fp) (!(fprintf(fp, "\n") > 0))
+#define GET_NEWLINE(fp) fscanf(fp, "\n")
+#define PUT_SPACE(fp) (!(fprintf(fp, " ") > 0))
+#define GET_SPACE(fp) fscanf(fp, " ")
+/* #define PUT_SPACE(fp)   assert(fputc(' ', (fp)) != EOF); */
+/* #define GET_SPACE(fp)   assert(fgetc(fp) == ' '); */
 
 #define ARRAY_ADD(ROP, XS, YS, N) ({    \
     size_t I;                           \

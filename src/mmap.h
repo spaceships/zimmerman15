@@ -4,59 +4,50 @@
 #include "obf_index.h"
 #include "aesrand.h"
 #include <acirc.h>
-#include <clt13.h>
+#include <mmap/mmap.h>
 #include <stdlib.h>
 
 #define NSLOTS 2
 
 typedef struct {
     obf_index *toplevel;
-    clt_state *clt_st;
-    int fake;
-    mpz_t *moduli;          // fake moduli
+    mmap_sk *sk;
 } secret_params;
 
 typedef struct {
     obf_index *toplevel;
-    clt_pp *clt_pp;
-    mpz_t *moduli;          // fake moduli
-    int fake;
-    int my_toplevel;
-    int my_clt_pp;
-    int my_moduli;
+    mmap_pp *pp;
 } public_params;
 
 typedef struct {
     obf_index *index;
-    clt_elem_t clt;
-    int fake;
-    mpz_t *slots;           // fake slots
+    mmap_enc enc;
 } encoding;
 
-secret_params* secret_params_create (acirc *c, size_t lambda, aes_randstate_t rng, int fake);
-void secret_params_destroy (secret_params *pp);
-mpz_t* get_moduli (secret_params *s);
+secret_params* secret_params_create (const mmap_vtable *mmap, acirc *c, size_t lambda, aes_randstate_t rng);
+void secret_params_destroy (const mmap_vtable *mmap, secret_params *sp);
+mpz_t* get_moduli (const mmap_vtable *mmap, secret_params *sp);
 
-public_params* public_params_create (secret_params *s);
+public_params* public_params_create (const mmap_vtable *mmap, secret_params *sp);
 void public_params_destroy (public_params *pp);
 int  public_params_eq (public_params *pp1, public_params *pp2);
 
-encoding* encode (mpz_t inp0, mpz_t inp2, const obf_index *ix, secret_params *sp, aes_randstate_t rng);
+encoding* encode (const mmap_vtable *mmap, mpz_t inp0, mpz_t inp2, const obf_index *ix, secret_params *sp);
 
-encoding* encoding_create (size_t n, int fake);
-encoding* encoding_copy (encoding *x);
-void encoding_destroy (encoding *x);
-void encoding_mul (encoding *rop, encoding *x, encoding *y, public_params *p);
-void encoding_add (encoding *rop, encoding *x, encoding *y, public_params *p);
-void encoding_sub (encoding *rop, encoding *x, encoding *y, public_params *p);
+encoding* encoding_create (const mmap_vtable *mmap, public_params *pp, size_t n);
+encoding* encoding_copy (const mmap_vtable *mmap, public_params *pp, encoding *x);
+void encoding_destroy (const mmap_vtable *mmap, encoding *x);
+void encoding_mul (const mmap_vtable *mmap, encoding *rop, encoding *x, encoding *y, public_params *p);
+void encoding_add (const mmap_vtable *mmap, encoding *rop, encoding *x, encoding *y, public_params *p);
+void encoding_sub (const mmap_vtable *mmap, encoding *rop, encoding *x, encoding *y, public_params *p);
 int encoding_eq (encoding *x, encoding *y);
-int encoding_is_zero (encoding *x, public_params *p);
+int encoding_is_zero (const mmap_vtable *mmap, encoding *x, public_params *p);
 
-public_params* public_params_read (FILE *fp);
-void public_params_write (FILE *fp, public_params *pp);
+public_params* public_params_read (const mmap_vtable *mmap, FILE *fp);
+void public_params_write (const mmap_vtable *mmap, FILE *fp, public_params *pp);
 
 void encoding_print (encoding *x);
-encoding* encoding_read (FILE *fp);
-void encoding_write (FILE *fp, encoding *x);
+encoding* encoding_read (const mmap_vtable *mmap, public_params *pp, FILE *fp);
+void encoding_write (const mmap_vtable *mmap, FILE *fp, encoding *x);
 
 #endif

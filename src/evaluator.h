@@ -4,6 +4,6 @@
 #include "obfuscator.h"
 #include <acirc.h>
 
-void evaluate (int *rop, acirc *c, int *inputs, obfuscation *obf);
+void evaluate (const mmap_vtable *mmap, int *rop, acirc *c, int *inputs, obfuscation *obf);
 
 #endif
