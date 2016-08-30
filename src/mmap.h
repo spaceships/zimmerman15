@@ -24,7 +24,7 @@ typedef struct {
     mmap_enc enc;
 } encoding;
 
-secret_params* secret_params_create (const mmap_vtable *mmap, acirc *c, size_t lambda, aes_randstate_t rng);
+secret_params* secret_params_create (const mmap_vtable *mmap, acirc *c, size_t lambda, size_t ncores, aes_randstate_t rng);
 void secret_params_destroy (const mmap_vtable *mmap, secret_params *sp);
 mpz_t* get_moduli (const mmap_vtable *mmap, secret_params *sp);
 

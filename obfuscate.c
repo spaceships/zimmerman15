@@ -84,7 +84,7 @@ int main (int argc, char **argv)
     aes_randinit(rng);
 
     puts("initializing secret params...");
-    secret_params *sp = secret_params_create(mmap, c, lambda, rng);
+    secret_params *sp = secret_params_create(mmap, c, lambda, 0, rng);
     puts("obfuscating...");
     obfuscation *obf = obfuscate(mmap, c, sp, npowers, rng);
 
