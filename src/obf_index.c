@@ -18,16 +18,21 @@ obf_index* obf_index_create (size_t n)
 
 obf_index* obf_index_copy (const obf_index *ix)
 {
-    obf_index *new = zim_malloc(sizeof(obf_index));
-    obf_index_init(new, ix->n);
+    obf_index *new;
+
+    if ((new = obf_index_create(ix->n)) == NULL)
+        return NULL;
     obf_index_set(new, ix);
     return new;
 }
 
 void obf_index_destroy (obf_index *ix)
 {
-    free(ix->pows);
-    free(ix);
+    if (ix) {
+        if (ix->pows)
+            free(ix->pows);
+        free(ix);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -56,8 +61,10 @@ bool obf_index_eq (const obf_index *x, const obf_index *y)
 
 obf_index* obf_index_union (obf_index *x, obf_index *y)
 {
+    obf_index *res;
     assert(x->nzs == y->nzs);
-    obf_index *res = obf_index_create(x->n);
+    if ((res = obf_index_create(x->n)) == NULL)
+        return NULL;
     for (size_t i = 0; i < x->nzs; i++) {
         res->pows[i] = MAX(x->pows[i], y->pows[i]);
     }
@@ -66,8 +73,10 @@ obf_index* obf_index_union (obf_index *x, obf_index *y)
 
 obf_index* obf_index_difference (obf_index *x, obf_index *y)
 {
+    obf_index *res;
     assert(x->nzs == y->nzs);
-    obf_index *res = obf_index_create(x->n);
+    if ((res = obf_index_create(x->n)) == NULL)
+        return NULL;
     for (size_t i = 0; i < x->nzs; i++) {
         res->pows[i] = x->pows[i] - y->pows[i];
         assert(res->pows[i] >= 0);
@@ -132,7 +141,9 @@ int obf_index_write (FILE *fp, obf_index *ix)
 
 obf_index* obf_index_create_toplevel (acirc *c)
 {
-    obf_index *ix = obf_index_create(c->ninputs);
+    obf_index *ix;
+    if ((ix = obf_index_create(c->ninputs)) == NULL)
+        return NULL;
     IX_Y(ix) = acirc_max_const_degree(c);
 #pragma omp parallel for
     for (size_t i = 0; i < ix->n; i++) {
