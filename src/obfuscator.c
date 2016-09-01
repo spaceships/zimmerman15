@@ -319,8 +319,7 @@ int obfuscation_write (const mmap_vtable *mmap, FILE *fp, obfuscation *obf)
     }
     for (size_t k = 0; k < obf->noutputs; k++) {
         encoding_write(mmap, fp, obf->Chatstar[k]);
-        if (k < obf->noutputs - 1)
-            (void) PUT_NEWLINE(fp);
+        (void) PUT_NEWLINE(fp);
     }
     return 0;
 }
@@ -345,8 +344,10 @@ obfuscation* obfuscation_read (const mmap_vtable *mmap, FILE *const fp)
         fprintf(stderr, "[obfuscation_read] failed to read npowers!\n");
         goto cleanup;
     }
-    obf->pp = public_params_read(mmap, fp);
-    (void) GET_NEWLINE(fp);
+    if ((obf->pp = public_params_read(mmap, fp)) == NULL || GET_NEWLINE(fp)) {
+        fprintf(stderr, "[%s] failed to read public params!\n", __func__);
+        goto cleanup;
+    }
     obf->xhat = zim_malloc(obf->ninputs * sizeof(encoding**));
     obf->uhat = zim_malloc(obf->ninputs * sizeof(encoding**));
     obf->zhat = zim_malloc(obf->ninputs * sizeof(encoding**));
@@ -357,38 +358,51 @@ obfuscation* obfuscation_read (const mmap_vtable *mmap, FILE *const fp)
         obf->zhat[i] = zim_malloc(2 * sizeof(encoding**));
         obf->what[i] = zim_malloc(2 * sizeof(encoding**));
         for (size_t b = 0; b <= 1; b++) {
-            obf->xhat[i][b] = encoding_read(mmap, obf->pp, fp);
-            (void) GET_NEWLINE(fp);
+            if ((obf->xhat[i][b] = encoding_read(mmap, obf->pp, fp)) == NULL || GET_NEWLINE(fp)) {
+                fprintf(stderr, "[%s] failed to read encoding!\n", __func__);
+                goto cleanup;
+            }
             obf->uhat[i][b] = zim_malloc(obf->npowers * sizeof(encoding*));
             for (size_t p = 0; p < obf->npowers; p++) {
-                obf->uhat[i][b][p] = encoding_read(mmap, obf->pp, fp);
-                (void) GET_NEWLINE(fp);
+                if ((obf->uhat[i][b][p] = encoding_read(mmap, obf->pp, fp)) == NULL || GET_NEWLINE(fp)) {
+                    fprintf(stderr, "[%s] failed to read encoding!\n", __func__);
+                    goto cleanup;
+                }
             }
             obf->zhat[i][b] = zim_malloc(obf->noutputs * sizeof(encoding*));
             obf->what[i][b] = zim_malloc(obf->noutputs * sizeof(encoding*));
             for (size_t k = 0; k < obf->noutputs; k++) {
-                obf->zhat[i][b][k] = encoding_read(mmap, obf->pp, fp);
-                (void) GET_NEWLINE(fp);
-                obf->what[i][b][k] = encoding_read(mmap, obf->pp, fp);
-                (void) GET_NEWLINE(fp);
+                if ((obf->zhat[i][b][k] = encoding_read(mmap, obf->pp, fp)) == NULL || GET_NEWLINE(fp)) {
+                    fprintf(stderr, "[%s] failed to read encoding!\n", __func__);
+                    goto cleanup;
+                }
+                if ((obf->what[i][b][k] = encoding_read(mmap, obf->pp, fp)) == NULL || GET_NEWLINE(fp)) {
+                    fprintf(stderr, "[%s] failed to read encoding!\n", __func__);
+                    goto cleanup;
+                }
             }
         }
     }
     obf->yhat = zim_malloc(obf->nconsts * sizeof(encoding*));
     for (size_t j = 0; j < obf->nconsts; j++) {
-        obf->yhat[j] = encoding_read(mmap, obf->pp, fp);
-        (void) GET_NEWLINE(fp);
+        if ((obf->yhat[j] = encoding_read(mmap, obf->pp, fp)) == NULL || GET_NEWLINE(fp)) {
+            fprintf(stderr, "[%s] failed to read encoding!\n", __func__);
+            goto cleanup;
+        }
     }
     obf->vhat = zim_malloc(obf->npowers * sizeof(encoding*));
     for (size_t p = 0; p < obf->npowers; p++) {
-        obf->vhat[p] = encoding_read(mmap, obf->pp, fp);
-        (void) GET_NEWLINE(fp);
+        if ((obf->vhat[p] = encoding_read(mmap, obf->pp, fp)) == NULL || GET_NEWLINE(fp)) {
+            fprintf(stderr, "[%s] failed to read encoding!\n", __func__);
+            goto cleanup;
+        }
     }
     obf->Chatstar = zim_malloc(obf->noutputs * sizeof(encoding*));
     for (size_t k = 0; k < obf->noutputs; k++) {
-        obf->Chatstar[k] = encoding_read(mmap, obf->pp, fp);
-        if (k < obf->noutputs - 1)
-            (void) GET_NEWLINE(fp);
+        if ((obf->Chatstar[k] = encoding_read(mmap, obf->pp, fp)) == NULL || GET_NEWLINE(fp)) {
+            fprintf(stderr, "[%s] failed to read encoding!\n", __func__);
+            goto cleanup;
+        }
     }
     ok = 1;
 cleanup:

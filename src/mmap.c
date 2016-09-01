@@ -11,9 +11,7 @@
 secret_params* secret_params_create (const mmap_vtable *mmap, acirc *c, size_t lambda, size_t ncores, aes_randstate_t rng)
 {
     secret_params *sp = zim_malloc(sizeof(secret_params));
-
     sp->toplevel = obf_index_create_toplevel(c);
-
     size_t kappa = acirc_delta(c) + 2*c->ninputs;
 
     sp->sk = zim_malloc(mmap->sk->size);
@@ -107,7 +105,8 @@ encoding* encoding_copy (const mmap_vtable *mmap, public_params *pp, encoding *x
 
 void encoding_destroy (const mmap_vtable *mmap, encoding *x)
 {
-    obf_index_destroy(x->index);
+    if (x->index)
+        obf_index_destroy(x->index);
     mmap->enc->clear(&x->enc);
     free(x);
 }
@@ -150,11 +149,13 @@ int encoding_is_zero (const mmap_vtable *mmap, encoding *x, public_params *p)
 public_params* public_params_read (const mmap_vtable *mmap, FILE *fp)
 {
     public_params *const pp = zim_malloc(sizeof(public_params));
-    pp->toplevel = zim_malloc(sizeof(obf_index));
+    if ((pp->toplevel = obf_index_read(fp)) == NULL || GET_NEWLINE(fp)) {
+        fprintf(stderr, "[%s] failed to read obf_index!\n", __func__);
+        public_params_destroy(pp);
+        return NULL;
+    }
     pp->toplevel_local = true;
-    obf_index_read(pp->toplevel, fp);
-    (void) GET_NEWLINE(fp);
-    pp->pp = malloc(mmap->pp->size);
+    pp->pp = zim_malloc(mmap->pp->size);
     mmap->pp->fread(pp->pp, fp);
     return pp;
 }
@@ -174,10 +175,12 @@ void encoding_print (encoding *x)
 
 encoding* encoding_read (const mmap_vtable *mmap, public_params *pp, FILE *fp)
 {
-    encoding *x = zim_malloc(sizeof(encoding));
-    x->index = zim_malloc(sizeof(obf_index));
-    obf_index_read(x->index, fp);
-    (void) GET_SPACE(fp);
+    encoding *x = zim_calloc(1, sizeof(encoding));
+    if ((x->index = obf_index_read(fp)) == NULL || GET_SPACE(fp)) {
+        fprintf(stderr, "[%s] failed to read obf_index!\n", __func__);
+        encoding_destroy(mmap, x);
+        return NULL;
+    }
     mmap->enc->init(&x->enc, pp->pp);
     mmap->enc->fread(&x->enc, fp);
     return x;

@@ -11,7 +11,7 @@ static void obf_index_init (obf_index *ix, size_t n)
 
 obf_index* obf_index_create (size_t n)
 {
-    obf_index *ix = zim_malloc(sizeof(obf_index));
+    obf_index *ix = zim_calloc(1, sizeof(obf_index));
     obf_index_init(ix, n);
     return ix;
 }
@@ -85,31 +85,47 @@ void obf_index_print (obf_index *ix)
     printf("n=%lu nzs=%lu\n", ix->n, ix->nzs);
 }
 
-void obf_index_read (obf_index *ix, FILE *fp)
+obf_index *obf_index_read (FILE *fp)
 {
-    ulong_read(&(ix->nzs), fp);
-    GET_SPACE(fp);
-    ulong_read(&(ix->n), fp);
-    GET_SPACE(fp);
+    obf_index *ix = zim_calloc(1, sizeof(obf_index));
+    if (ulong_read(&(ix->nzs), fp) || GET_SPACE(fp)) {
+        fprintf(stderr, "[%s] failed to read nzs!\n", __func__);
+        obf_index_destroy(ix);
+        return NULL;
+    }
+    if (ulong_read(&(ix->n), fp) || GET_SPACE(fp)) {
+        fprintf(stderr, "[%s] failed to read n!\n", __func__);
+        obf_index_destroy(ix);
+        return NULL;
+    }
     ix->pows = zim_malloc(ix->nzs * sizeof(ul));
     for (size_t i = 0; i < ix->nzs; i++) {
-        ulong_read(&(ix->pows[i]), fp);
-        if (i != ix->nzs-1)
-            GET_SPACE(fp);
+        if (ulong_read(&(ix->pows[i]), fp) || GET_SPACE(fp)) {
+            fprintf(stderr, "[%s] failed to read n!\n", __func__);
+            obf_index_destroy(ix);
+            return NULL;
+        }
     }
+    return ix;
 }
 
-void obf_index_write (FILE *fp, obf_index *ix)
+int obf_index_write (FILE *fp, obf_index *ix)
 {
-    ulong_write(fp, ix->nzs);
-    PUT_SPACE(fp);
-    ulong_write(fp, ix->n);
-    PUT_SPACE(fp);
-    for (size_t i = 0; i < ix->nzs; i++) {
-        ulong_write(fp, ix->pows[i]);
-        if (i != ix->nzs-1)
-            PUT_SPACE(fp);
+    if (ulong_write(fp, ix->nzs) || PUT_SPACE(fp)) {
+        fprintf(stderr, "[%s] failed to write nzs!\n", __func__);
+        return 1;
     }
+    if (ulong_write(fp, ix->n) || PUT_SPACE(fp)) {
+        fprintf(stderr, "[%s] failed to write nzs!\n", __func__);
+        return 1;
+    }    
+    for (size_t i = 0; i < ix->nzs; i++) {
+        if (ulong_write(fp, ix->pows[i]) || PUT_SPACE(fp)) {
+            fprintf(stderr, "[%s] failed to write pows!\n", __func__);
+            return 1;
+        }
+    }
+    return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
