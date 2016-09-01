@@ -5,5 +5,7 @@ clt13
 libacirc
 libaesrand
 libthreadpool
+gghlite
+libmmap
 src/*.o
 circuits/*.zim
