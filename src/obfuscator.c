@@ -354,23 +354,23 @@ obfuscation* obfuscation_read (const mmap_vtable *mmap, FILE *const fp)
     obf->what = zim_malloc(obf->ninputs * sizeof(encoding**));
     for (size_t i = 0; i < obf->ninputs; i++) {
         obf->xhat[i] = zim_malloc(2 * sizeof(encoding*));
-        obf->uhat[i] = zim_malloc(2 * sizeof(encoding**));
-        obf->zhat[i] = zim_malloc(2 * sizeof(encoding**));
-        obf->what[i] = zim_malloc(2 * sizeof(encoding**));
+        obf->uhat[i] = zim_malloc(2 * sizeof(encoding*));
+        obf->zhat[i] = zim_malloc(2 * sizeof(encoding*));
+        obf->what[i] = zim_malloc(2 * sizeof(encoding*));
         for (size_t b = 0; b <= 1; b++) {
             if ((obf->xhat[i][b] = encoding_read(mmap, obf->pp, fp)) == NULL || GET_NEWLINE(fp)) {
                 fprintf(stderr, "[%s] failed to read encoding!\n", __func__);
                 goto cleanup;
             }
-            obf->uhat[i][b] = zim_malloc(obf->npowers * sizeof(encoding*));
+            obf->uhat[i][b] = zim_malloc(obf->npowers * sizeof(encoding));
             for (size_t p = 0; p < obf->npowers; p++) {
                 if ((obf->uhat[i][b][p] = encoding_read(mmap, obf->pp, fp)) == NULL || GET_NEWLINE(fp)) {
                     fprintf(stderr, "[%s] failed to read encoding!\n", __func__);
                     goto cleanup;
                 }
             }
-            obf->zhat[i][b] = zim_malloc(obf->noutputs * sizeof(encoding*));
-            obf->what[i][b] = zim_malloc(obf->noutputs * sizeof(encoding*));
+            obf->zhat[i][b] = zim_malloc(obf->noutputs * sizeof(encoding));
+            obf->what[i][b] = zim_malloc(obf->noutputs * sizeof(encoding));
             for (size_t k = 0; k < obf->noutputs; k++) {
                 if ((obf->zhat[i][b][k] = encoding_read(mmap, obf->pp, fp)) == NULL || GET_NEWLINE(fp)) {
                     fprintf(stderr, "[%s] failed to read encoding!\n", __func__);
@@ -383,21 +383,21 @@ obfuscation* obfuscation_read (const mmap_vtable *mmap, FILE *const fp)
             }
         }
     }
-    obf->yhat = zim_malloc(obf->nconsts * sizeof(encoding*));
+    obf->yhat = zim_malloc(obf->nconsts * sizeof(encoding));
     for (size_t j = 0; j < obf->nconsts; j++) {
         if ((obf->yhat[j] = encoding_read(mmap, obf->pp, fp)) == NULL || GET_NEWLINE(fp)) {
             fprintf(stderr, "[%s] failed to read encoding!\n", __func__);
             goto cleanup;
         }
     }
-    obf->vhat = zim_malloc(obf->npowers * sizeof(encoding*));
+    obf->vhat = zim_malloc(obf->npowers * sizeof(encoding));
     for (size_t p = 0; p < obf->npowers; p++) {
         if ((obf->vhat[p] = encoding_read(mmap, obf->pp, fp)) == NULL || GET_NEWLINE(fp)) {
             fprintf(stderr, "[%s] failed to read encoding!\n", __func__);
             goto cleanup;
         }
     }
-    obf->Chatstar = zim_malloc(obf->noutputs * sizeof(encoding*));
+    obf->Chatstar = zim_malloc(obf->noutputs * sizeof(encoding));
     for (size_t k = 0; k < obf->noutputs; k++) {
         if ((obf->Chatstar[k] = encoding_read(mmap, obf->pp, fp)) == NULL || GET_NEWLINE(fp)) {
             fprintf(stderr, "[%s] failed to read encoding!\n", __func__);
