@@ -29,8 +29,8 @@ obf_index* obf_index_union (obf_index *x, obf_index *y);
 obf_index* obf_index_difference (obf_index *x, obf_index *y);
 
 void obf_index_print (obf_index *ix);
-void obf_index_read  (obf_index *ix, FILE *fp);
-void obf_index_write (FILE *fp, obf_index *ix);
+obf_index *obf_index_read (FILE *fp);
+int obf_index_write (FILE *fp, obf_index *ix);
 
 obf_index* obf_index_create_toplevel (acirc *c);
 

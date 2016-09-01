@@ -17,6 +17,7 @@ typedef struct {
 } ref_list;
 
 typedef struct work_args {
+    const mmap_vtable *mmap;
     acircref ref;
     acirc *c;
     int *inputs;
@@ -34,12 +35,12 @@ static void obf_eval_worker (void* wargs);
 static ref_list* ref_list_create ();
 static void ref_list_destroy (ref_list *list);
 static void ref_list_push    (ref_list *list, acircref ref);
-static void raise_encodings  (encoding *x, encoding *y, obfuscation *obf);
-static void raise_encoding   (encoding *x, obf_index *target, obfuscation *obf);
+static void raise_encodings  (const mmap_vtable *const mmap, encoding *x, encoding *y, obfuscation *obf);
+static void raise_encoding   (const mmap_vtable *const mmap, encoding *x, obf_index *target, obfuscation *obf);
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void evaluate (int *rop, acirc *c, int *inputs, obfuscation *obf)
+void evaluate (const mmap_vtable *mmap, int *rop, acirc *c, int *inputs, obfuscation *obf)
 {
     encoding *cache [c->nrefs]; // evaluated intermediate nodes
     ref_list* deps [c->nrefs];  // each list contains refs of nodes dependent on this one
@@ -76,6 +77,7 @@ void evaluate (int *rop, acirc *c, int *inputs, obfuscation *obf)
         // allocate each argstruct here, otherwise we will overwrite
         // it each time we add to the job list. The worker will free.
         work_args *args = zim_malloc(sizeof(work_args));
+        args->mmap   = mmap;
         args->ref    = ref;
         args->c      = c;
         args->inputs = inputs;
@@ -96,13 +98,14 @@ void evaluate (int *rop, acirc *c, int *inputs, obfuscation *obf)
     for (size_t i = 0; i < c->nrefs; i++) {
         ref_list_destroy(deps[i]);
         if (mine[i]) {
-            encoding_destroy(cache[i]);
+            encoding_destroy(mmap, cache[i]);
         }
     }
 }
 
 void obf_eval_worker(void* wargs)
 {
+    const mmap_vtable *const mmap = ((work_args*)wargs)->mmap;
     acircref ref     = ((work_args*)wargs)->ref; // the particular ref to evaluate right now
     acirc *c         = ((work_args*)wargs)->c;
     int *inputs      = ((work_args*)wargs)->inputs;
@@ -132,7 +135,7 @@ void obf_eval_worker(void* wargs)
 
     // otherwise the ref is some kind of gate: allocate the encoding & eval
     else {
-        res = encoding_create(c->ninputs, obf->pp->fake);
+        res = encoding_create(mmap, obf->pp, c->ninputs);
         mine[ref] = 1; // the evaluator allocated this encoding
 
         // the encodings of the args exist since the ref's children signalled it
@@ -142,20 +145,20 @@ void obf_eval_worker(void* wargs)
         assert(y != NULL);
 
         if (op == MUL) {
-            encoding_mul(res, x, y, obf->pp);
+            encoding_mul(mmap, res, x, y, obf->pp);
         }
         else {
-            encoding *tmp_x = encoding_copy(x);
-            encoding *tmp_y = encoding_copy(y);
-            raise_encodings(tmp_x, tmp_y, obf);
+            encoding *tmp_x = encoding_copy(mmap, obf->pp, x);
+            encoding *tmp_y = encoding_copy(mmap, obf->pp, y);
+            raise_encodings(mmap, tmp_x, tmp_y, obf);
             if (op == ADD) {
-                encoding_add(res, tmp_x, tmp_y, obf->pp);
+                encoding_add(mmap, res, tmp_x, tmp_y, obf->pp);
             }
             else if (op == SUB) {
-                encoding_sub(res, tmp_x, tmp_y, obf->pp);
+                encoding_sub(mmap, res, tmp_x, tmp_y, obf->pp);
             }
-            encoding_destroy(tmp_x);
-            encoding_destroy(tmp_y);
+            encoding_destroy(mmap, tmp_x);
+            encoding_destroy(mmap, tmp_y);
         }
     }
 
@@ -192,37 +195,37 @@ void obf_eval_worker(void* wargs)
     }
 
     if (ref_is_output) {
-        encoding *outwire = encoding_copy(res);
-        encoding *tmp     = encoding_copy(obf->Chatstar[k]);
+        encoding *outwire = encoding_copy(mmap, obf->pp, res);
+        encoding *tmp     = encoding_copy(mmap, obf->pp, obf->Chatstar[k]);
 
         for (size_t i = 0; i < c->ninputs; i++)
-            encoding_mul(outwire, outwire, obf->zhat[i][inputs[i]][k], obf->pp);
+            encoding_mul(mmap, outwire, outwire, obf->zhat[i][inputs[i]][k], obf->pp);
         for (size_t i = 0; i < c->ninputs; i++)
-            encoding_mul(tmp, tmp, obf->what[i][inputs[i]][k], obf->pp);
+            encoding_mul(mmap, tmp, tmp, obf->what[i][inputs[i]][k], obf->pp);
 
         assert(obf_index_eq(obf->pp->toplevel, tmp->index));
         assert(obf_index_eq(obf->pp->toplevel, outwire->index));
 
-        encoding_sub(outwire, outwire, tmp, obf->pp);
-        rop[k] = !encoding_is_zero(outwire, obf->pp);
+        encoding_sub(mmap, outwire, outwire, tmp, obf->pp);
+        rop[k] = !encoding_is_zero(mmap, outwire, obf->pp);
 
-        encoding_destroy(outwire);
-        encoding_destroy(tmp);
+        encoding_destroy(mmap, outwire);
+        encoding_destroy(mmap, tmp);
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // statefully raise encodings to the union of their indices
 
-static void raise_encodings (encoding *x, encoding *y, obfuscation *obf)
+static void raise_encodings (const mmap_vtable *const mmap, encoding *x, encoding *y, obfuscation *obf)
 {
     obf_index *target = obf_index_union(x->index, y->index);
-    raise_encoding(x, target, obf);
-    raise_encoding(y, target, obf);
+    raise_encoding(mmap, x, target, obf);
+    raise_encoding(mmap, y, target, obf);
     obf_index_destroy(target);
 }
 
-static void raise_encoding (encoding *x, obf_index *target, obfuscation *obf)
+static void raise_encoding (const mmap_vtable *const mmap, encoding *x, obf_index *target, obfuscation *obf)
 {
     obf_index *diff_ix = obf_index_difference(target, x->index);
     for (size_t i = 0; i < obf->ninputs; i++) {
@@ -233,7 +236,7 @@ static void raise_encoding (encoding *x, obf_index *target, obfuscation *obf)
                 size_t p = 0;
                 while (((1 << (p+1)) <= diff) && ((p+1) < obf->npowers))
                     p++;
-                encoding_mul(x, x, obf->uhat[i][b][p], obf->pp);
+                encoding_mul(mmap, x, x, obf->uhat[i][b][p], obf->pp);
                 diff -= (1 << p);
             }
         }
@@ -243,7 +246,7 @@ static void raise_encoding (encoding *x, obf_index *target, obfuscation *obf)
         size_t p = 0;
         while (((1 << (p+1)) <= diff) && ((p+1) < obf->npowers))
             p++;
-        encoding_mul(x, x, obf->vhat[p], obf->pp);
+        encoding_mul(mmap, x, x, obf->vhat[p], obf->pp);
         diff -= (1 << p);
     }
     obf_index_destroy(diff_ix);

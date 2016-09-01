@@ -4,8 +4,7 @@
 #include "mmap.h"
 #include "util.h"
 #include <acirc.h>
-#include <clt13.h>
-#include <gmp.h>
+#include <mmap/mmap.h>
 
 #define NUM_ENCODINGS(C, NPOWERS) ( \
         (C)->ninputs * 2 + \
@@ -31,12 +30,12 @@ typedef struct {
     encoding **Chatstar;    // [o]
 } obfuscation;
 
-obfuscation* obfuscate (acirc *c, secret_params *sp, size_t npowers, aes_randstate_t rng);
+obfuscation* obfuscate (const mmap_vtable *mmap, acirc *c, secret_params *sp, size_t npowers, aes_randstate_t rng);
 
-void obfuscation_destroy (obfuscation *obf);
+void obfuscation_destroy (const mmap_vtable *mmap, obfuscation *obf);
 
-void obfuscation_write (FILE *fp, obfuscation *obf);
-obfuscation* obfuscation_read (FILE *fp);
+int obfuscation_write (const mmap_vtable *mmap, FILE *fp, obfuscation *obf);
+obfuscation* obfuscation_read (const mmap_vtable *mmap, FILE *fp);
 
 int obf_eq (obfuscation *obf1, obfuscation *obf2); // for checking the serialization
 

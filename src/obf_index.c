@@ -11,23 +11,28 @@ static void obf_index_init (obf_index *ix, size_t n)
 
 obf_index* obf_index_create (size_t n)
 {
-    obf_index *ix = zim_malloc(sizeof(obf_index));
+    obf_index *ix = zim_calloc(1, sizeof(obf_index));
     obf_index_init(ix, n);
     return ix;
 }
 
 obf_index* obf_index_copy (const obf_index *ix)
 {
-    obf_index *new = zim_malloc(sizeof(obf_index));
-    obf_index_init(new, ix->n);
+    obf_index *new;
+
+    if ((new = obf_index_create(ix->n)) == NULL)
+        return NULL;
     obf_index_set(new, ix);
     return new;
 }
 
 void obf_index_destroy (obf_index *ix)
 {
-    free(ix->pows);
-    free(ix);
+    if (ix) {
+        if (ix->pows)
+            free(ix->pows);
+        free(ix);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -56,8 +61,10 @@ bool obf_index_eq (const obf_index *x, const obf_index *y)
 
 obf_index* obf_index_union (obf_index *x, obf_index *y)
 {
+    obf_index *res;
     assert(x->nzs == y->nzs);
-    obf_index *res = obf_index_create(x->n);
+    if ((res = obf_index_create(x->n)) == NULL)
+        return NULL;
     for (size_t i = 0; i < x->nzs; i++) {
         res->pows[i] = MAX(x->pows[i], y->pows[i]);
     }
@@ -66,8 +73,10 @@ obf_index* obf_index_union (obf_index *x, obf_index *y)
 
 obf_index* obf_index_difference (obf_index *x, obf_index *y)
 {
+    obf_index *res;
     assert(x->nzs == y->nzs);
-    obf_index *res = obf_index_create(x->n);
+    if ((res = obf_index_create(x->n)) == NULL)
+        return NULL;
     for (size_t i = 0; i < x->nzs; i++) {
         res->pows[i] = x->pows[i] - y->pows[i];
         assert(res->pows[i] >= 0);
@@ -85,40 +94,58 @@ void obf_index_print (obf_index *ix)
     printf("n=%lu nzs=%lu\n", ix->n, ix->nzs);
 }
 
-void obf_index_read (obf_index *ix, FILE *fp)
+obf_index *obf_index_read (FILE *fp)
 {
-    ulong_read(&(ix->nzs), fp);
-    GET_SPACE(fp);
-    ulong_read(&(ix->n), fp);
-    GET_SPACE(fp);
+    obf_index *ix = zim_calloc(1, sizeof(obf_index));
+    if (ulong_read(&(ix->nzs), fp) || GET_SPACE(fp)) {
+        fprintf(stderr, "[%s] failed to read nzs!\n", __func__);
+        obf_index_destroy(ix);
+        return NULL;
+    }
+    if (ulong_read(&(ix->n), fp) || GET_SPACE(fp)) {
+        fprintf(stderr, "[%s] failed to read n!\n", __func__);
+        obf_index_destroy(ix);
+        return NULL;
+    }
     ix->pows = zim_malloc(ix->nzs * sizeof(ul));
     for (size_t i = 0; i < ix->nzs; i++) {
-        ulong_read(&(ix->pows[i]), fp);
-        if (i != ix->nzs-1)
-            GET_SPACE(fp);
+        if (ulong_read(&(ix->pows[i]), fp) || GET_SPACE(fp)) {
+            fprintf(stderr, "[%s] failed to read n!\n", __func__);
+            obf_index_destroy(ix);
+            return NULL;
+        }
     }
+    return ix;
 }
 
-void obf_index_write (FILE *fp, obf_index *ix)
+int obf_index_write (FILE *fp, obf_index *ix)
 {
-    ulong_write(fp, ix->nzs);
-    PUT_SPACE(fp);
-    ulong_write(fp, ix->n);
-    PUT_SPACE(fp);
-    for (size_t i = 0; i < ix->nzs; i++) {
-        ulong_write(fp, ix->pows[i]);
-        if (i != ix->nzs-1)
-            PUT_SPACE(fp);
+    if (ulong_write(fp, ix->nzs) || PUT_SPACE(fp)) {
+        fprintf(stderr, "[%s] failed to write nzs!\n", __func__);
+        return 1;
     }
+    if (ulong_write(fp, ix->n) || PUT_SPACE(fp)) {
+        fprintf(stderr, "[%s] failed to write nzs!\n", __func__);
+        return 1;
+    }    
+    for (size_t i = 0; i < ix->nzs; i++) {
+        if (ulong_write(fp, ix->pows[i]) || PUT_SPACE(fp)) {
+            fprintf(stderr, "[%s] failed to write pows!\n", __func__);
+            return 1;
+        }
+    }
+    return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 obf_index* obf_index_create_toplevel (acirc *c)
 {
-    obf_index *ix = obf_index_create(c->ninputs);
+    obf_index *ix;
+    if ((ix = obf_index_create(c->ninputs)) == NULL)
+        return NULL;
     IX_Y(ix) = acirc_max_const_degree(c);
-    #pragma omp parallel for
+#pragma omp parallel for
     for (size_t i = 0; i < ix->n; i++) {
         size_t d = acirc_max_var_degree(c, i);
         IX_X(ix, i, 0) = d;

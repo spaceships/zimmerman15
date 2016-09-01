@@ -8,6 +8,9 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <mmap/mmap_clt.h>
+#include <mmap/mmap_dummy.h>
+
 void usage()
 {
     printf("Usage: obfuscate [options] [circuit]\n");
@@ -21,15 +24,15 @@ void usage()
 
 int main (int argc, char **argv)
 {
-    int fake = 0;
     ul lambda = 10;
     ul npowers = 8;
     int output_filename_set = 0;
     char output_filename [1024];
     int arg;
+    const mmap_vtable *mmap = &clt_vtable;
     while ((arg = getopt(argc, argv, "fl:o:p:")) != -1) {
         if (arg == 'f') {
-            fake = 1;
+            mmap = &dummy_vtable;
         }
         else if (arg == 'l') {
             lambda = atol(optarg);
@@ -74,16 +77,16 @@ int main (int argc, char **argv)
     printf("// circuit: ninputs=%lu noutputs=%lu nconsts=%lu ngates=%lu nrefs=%lu delta=%lu\n",
            c->ninputs, c->noutputs, c->nconsts, c->ngates, c->nrefs, delta);
 
-    printf("// obfuscation: fake=%d lambda=%lu kappa=%lu npowers=%lu\n",
-           fake, lambda, delta + 2*c->ninputs, npowers);
+    printf("// obfuscation: lambda=%lu kappa=%lu npowers=%lu\n",
+           lambda, delta + 2*c->ninputs, npowers);
 
     aes_randstate_t rng;
     aes_randinit(rng);
 
     puts("initializing secret params...");
-    secret_params *sp = secret_params_create(c, lambda, rng, fake);
+    secret_params *sp = secret_params_create(mmap, c, lambda, 0, rng);
     puts("obfuscating...");
-    obfuscation *obf = obfuscate(c, sp, npowers, rng);
+    obfuscation *obf = obfuscate(mmap, c, sp, npowers, rng);
 
     if (!output_filename_set) {
         char prefix[1024];
@@ -91,16 +94,16 @@ int main (int argc, char **argv)
         prefix[dot - acirc_filename] = '\0';
         sprintf(output_filename, "%s.%lu.zim", prefix, lambda);
     }
-    FILE *obf_fp = fopen(output_filename, "w");
+    FILE *obf_fp = fopen(output_filename, "wb");
     if (obf_fp == NULL) {
         fprintf(stderr, "[obfuscate] error: could not open \"%s\"\n", output_filename);
         exit(EXIT_FAILURE);
     }
-    obfuscation_write(obf_fp, obf);
+    obfuscation_write(mmap, obf_fp, obf);
     fclose(obf_fp);
 
     acirc_destroy(c);
     aes_randclear(rng);
-    secret_params_destroy(sp);
-    obfuscation_destroy(obf);
+    secret_params_destroy(mmap, sp);
+    obfuscation_destroy(mmap, obf);
 }

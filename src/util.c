@@ -201,12 +201,12 @@ void* zim_realloc(void *ptr, size_t size)
 ////////////////////////////////////////////////////////////////////////////////
 // serialization
 
-void ulong_read (unsigned long *x, FILE *const fp) {
-    assert(fscanf(fp, "%lu", x) > 0);
+int ulong_read (unsigned long *x, FILE *const fp) {
+    return !(fscanf(fp, "%lu", x) > 0);
 }
 
-void ulong_write (FILE *const fp, unsigned long x) {
-    assert(fprintf(fp, "%lu", x) > 0);
+int ulong_write (FILE *const fp, unsigned long x) {
+    return !(fprintf(fp, "%lu", x) > 0);
 }
 
 void int_write (FILE *const fp, int x) {
