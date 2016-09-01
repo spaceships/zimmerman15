@@ -358,6 +358,7 @@ obfuscation* obfuscation_read (const mmap_vtable *mmap, FILE *const fp)
         obf->zhat[i] = zim_malloc(2 * sizeof(encoding*));
         obf->what[i] = zim_malloc(2 * sizeof(encoding*));
         for (size_t b = 0; b <= 1; b++) {
+            obf->xhat[i][b] = zim_malloc(sizeof(encoding));
             if ((obf->xhat[i][b] = encoding_read(mmap, obf->pp, fp)) == NULL || GET_NEWLINE(fp)) {
                 fprintf(stderr, "[%s] failed to read encoding!\n", __func__);
                 goto cleanup;
