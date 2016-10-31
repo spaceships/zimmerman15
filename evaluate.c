@@ -75,7 +75,7 @@ int main (int argc, char **argv)
         prefix[dot - acirc_filename] = '\0';
         sprintf(input_filename, "%s.%lu.zim", prefix, lambda);
     }
-    printf("reading obfuscation from %s\n", input_filename);
+    fprintf(stderr, "reading obfuscation from %s\n", input_filename);
     FILE *obf_fp = fopen(input_filename, "rb");
     if (obf_fp == NULL) {
         fprintf(stderr, "[obfuscate] error: could not open \"%s\"\n", input_filename);
@@ -84,9 +84,9 @@ int main (int argc, char **argv)
     obfuscation *obf = obfuscation_read(mmap, obf_fp);
     fclose(obf_fp);
 
-    printf("// npowers=%lu\n", obf->npowers);
+    fprintf(stderr, "// npowers=%lu\n", obf->npowers);
 
-    printf("evaluating...\n");
+    fprintf(stderr, "evaluating...\n");
     int res[c->noutputs];
     int eval_ok = 1;
     for (int i = 0; i < c->ntests; i++) {
