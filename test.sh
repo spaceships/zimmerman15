@@ -12,7 +12,7 @@ obf_out=$(/usr/bin/time -vo /tmp/obf.txt ./obfuscate -l $lambda $circ)
 obf_sec=$(grep User /tmp/obf.txt    | perl -nE '/\(seconds\): (\d+\.\d+)/; print $1')
 obf_mem=$(grep Maximum /tmp/obf.txt | perl -nE '/\(kbytes\): (\d+)/;       print $1')
 
-eval_out=$(/usr/bin/time -vo /tmp/eval.txt ./evaluate -1 $circ)
+eval_out=$(/usr/bin/time -vo /tmp/eval.txt ./evaluate -l $lambda -1 $circ)
 eval_sec=$(grep User /tmp/eval.txt    | perl -nE '/\(seconds\): (\d+\.\d+)/; print $1')
 eval_mem=$(grep Maximum /tmp/eval.txt | perl -nE '/\(kbytes\): (\d+)/;       print $1')
 

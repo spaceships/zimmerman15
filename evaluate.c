@@ -78,7 +78,7 @@ int main (int argc, char **argv)
     fprintf(stderr, "reading obfuscation from %s\n", input_filename);
     FILE *obf_fp = fopen(input_filename, "rb");
     if (obf_fp == NULL) {
-        fprintf(stderr, "[obfuscate] error: could not open \"%s\"\n", input_filename);
+        fprintf(stderr, "[evaluate] error: could not open \"%s\"\n", input_filename);
         exit(EXIT_FAILURE);
     }
     obfuscation *obf = obfuscation_read(mmap, obf_fp);
