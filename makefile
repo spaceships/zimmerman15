@@ -23,6 +23,8 @@ src/%.o: src/%.c
 
 deepclean: clean
 	$(RM) -r libaesrand
+	$(RM) -r libmmap
+	$(RM) -r gghlite
 	$(RM) -r clt13
 	$(RM) -r libacirc
 	$(RM) -r libthreadpool
