@@ -15,7 +15,7 @@ secret_params* secret_params_create (const mmap_vtable *mmap, acirc *c, size_t l
     size_t kappa = acirc_delta(c) + 2*c->ninputs;
 
     sp->sk = zim_malloc(mmap->sk->size);
-    mmap->sk->init(sp->sk, lambda, kappa, sp->toplevel->nzs, (int *) sp->toplevel->pows, ncores, rng, true);
+    mmap->sk->init(sp->sk, lambda, kappa, sp->toplevel->nzs, (int *) sp->toplevel->pows, 0, ncores, rng, true);
 
     return sp;
 }
