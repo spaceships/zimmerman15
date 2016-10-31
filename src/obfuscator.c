@@ -28,7 +28,7 @@ obfuscation* obfuscate (const mmap_vtable *mmap, acirc *c, secret_params *sp, si
     mpz_t delta [n][2][o];
     mpz_t *moduli = get_moduli(mmap, sp);
 
-    assert(mmap->sk->nslots(sp->sk) >= 2);
+    // assert(mmap->sk->nslots(sp->sk) >= 2);
 
 #pragma omp parallel for
     for (int i = 0; i < n; i++) {
