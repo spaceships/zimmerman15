@@ -22,10 +22,11 @@ int main (int argc, char **argv)
 {
     ul lambda = 10;
     int input_filename_set = 0;
+    int only_one_test = 0;
     char input_filename [1024];
     int arg;
     const mmap_vtable *mmap = &clt_vtable;
-    while ((arg = getopt(argc, argv, "fl:o:")) != -1) {
+    while ((arg = getopt(argc, argv, "fl:o:1")) != -1) {
         if (arg == 'f') {
             mmap = &dummy_vtable;
         }
@@ -35,7 +36,11 @@ int main (int argc, char **argv)
         else if (arg == 'o') {
             strcpy(input_filename, optarg);
             input_filename_set = 1;
-        } else {
+        }
+        else if (arg == '1') {
+            only_one_test = 1;
+        }
+        else {
             usage();
             exit(EXIT_FAILURE);
         }
@@ -85,6 +90,9 @@ int main (int argc, char **argv)
     int res[c->noutputs];
     int eval_ok = 1;
     for (int i = 0; i < c->ntests; i++) {
+        if (only_one_test && i > 0) {
+            break;
+        }
         evaluate(mmap, res, c, c->testinps[i], obf);
         bool test_ok = ARRAY_EQ(res, c->testouts[i], c->noutputs);
         eval_ok = eval_ok && test_ok;
