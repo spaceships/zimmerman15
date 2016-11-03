@@ -29,10 +29,12 @@ int main (int argc, char **argv)
     int output_filename_set = 0;
     char output_filename [1024];
     int arg;
+    int fake = 0;
     const mmap_vtable *mmap = &clt_vtable;
     while ((arg = getopt(argc, argv, "fl:o:p:")) != -1) {
         if (arg == 'f') {
             mmap = &dummy_vtable;
+            fake = 1;
         }
         else if (arg == 'l') {
             lambda = atol(optarg);
@@ -92,7 +94,11 @@ int main (int argc, char **argv)
         char prefix[1024];
         memcpy(prefix, acirc_filename, dot - acirc_filename);
         prefix[dot - acirc_filename] = '\0';
-        sprintf(output_filename, "%s.%lu.zim", prefix, lambda);
+        if (fake) {
+            sprintf(output_filename, "%s.fake.zim", prefix);
+        } else {
+            sprintf(output_filename, "%s.%lu.zim", prefix, lambda);
+        }
     }
     FILE *obf_fp = fopen(output_filename, "wb");
     if (obf_fp == NULL) {

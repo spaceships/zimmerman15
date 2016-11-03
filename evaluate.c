@@ -25,10 +25,12 @@ int main (int argc, char **argv)
     int only_one_test = 0;
     char input_filename [1024];
     int arg;
+    int fake = 0;
     const mmap_vtable *mmap = &clt_vtable;
     while ((arg = getopt(argc, argv, "fl:o:1")) != -1) {
         if (arg == 'f') {
             mmap = &dummy_vtable;
+            fake = 1;
         }
         else if (arg == 'l') {
             lambda = atol(optarg);
@@ -73,7 +75,11 @@ int main (int argc, char **argv)
         char prefix[1024];
         memcpy(prefix, acirc_filename, dot - acirc_filename);
         prefix[dot - acirc_filename] = '\0';
-        sprintf(input_filename, "%s.%lu.zim", prefix, lambda);
+        if (fake) {
+            sprintf(input_filename, "%s.fake.zim", prefix);
+        } else {
+            sprintf(input_filename, "%s.%lu.zim", prefix, lambda);
+        }
     }
     fprintf(stderr, "reading obfuscation from %s\n", input_filename);
     FILE *obf_fp = fopen(input_filename, "rb");
