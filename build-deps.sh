@@ -23,7 +23,7 @@ build () {
     cd $1
         mkdir -p build/autoconf
         autoreconf -i
-        ./configure --prefix=$builddir --enable-debug
+        ./configure --prefix=$builddir
         make
         make install
     cd ..;  

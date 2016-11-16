@@ -1,6 +1,7 @@
 CC 	   = gcc
 CFLAGS = -Wall -Wno-unused-result -Wno-pointer-sign -Wno-switch \
-		 --std=gnu11 -g \
+		 --std=gnu11 \
+		 -O3 \
 		  -fopenmp
 
 IFLAGS = -Isrc -Ibuild/include
